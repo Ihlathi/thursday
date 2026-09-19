@@ -55,10 +55,12 @@ class LongTermMemory:
         path.chmod(0o600)
         self.db.execute('CREATE TABLE IF NOT EXISTS memory (text TEXT PRIMARY KEY, vector TEXT, created REAL)')
     def consider(self, text):
-        # Promote only explicit accessibility preferences, not arbitrary history.
+        # Promote explicit preferences and opt-in task/context notes, never arbitrary history.
         if sensitive(text) or len(text) > 500:
             return False
-        if not re.fullmatch(r'(?:remember(?: that)? )?i prefer (?:large text|high contrast|spoken responses|reduced motion)[.!]?', text.strip(), re.I):
+        preference=re.fullmatch(r'(?:remember(?: that)? )?i prefer (?:large text|high contrast|spoken responses|reduced motion)[.!]?', text.strip(), re.I)
+        note=re.fullmatch(r'remember (?:task|context):\s+\S.{0,450}',text.strip(),re.I)
+        if not (preference or note):
             return False
         self.db.execute('INSERT OR REPLACE INTO memory VALUES (?,?,?)', (text,json.dumps(embed(text)),time.time()))
         self.db.commit()

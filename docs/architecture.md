@@ -37,7 +37,7 @@ pending calls. Exact model response parts preserve Gemini thought signatures.
   Current task observations/actions and world state are bounded separately.
 - Long term: local SQLite preference text + 256-dimensional vectors. Promotion is
   considered on every user input, but only explicit allowlisted accessibility
-  preferences are retained. Secret-looking strings are rejected. Relevant entries
+  preferences or `Remember task: ...` / `Remember context: ...` notes are retained. Secret-looking strings are rejected. Relevant entries
   are retrieved by cosine similarity; full history is never loaded into prompts.
   Delete `.agent-data/memory.sqlite3` while Core is stopped to forget everything.
 - System semantic index: ephemeral vectors keyed by stable element ID. Structured

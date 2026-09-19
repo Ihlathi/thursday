@@ -24,3 +24,12 @@ def test_semantic_index_deltas_coordinates_and_sensitive():
     assert not w.update({'revision':1,'elements':[],'full':True})
     w.update({'revision':4,'elements':[dict(e,sensitive=True)]}); assert not w.search('orders')
     w.update({'revision':5,'removed_ids':['orders']}); assert not w.elements and not w.index
+
+def test_explicit_task_and_context_notes(tmp_path):
+    m=LongTermMemory(tmp_path/'notes.db')
+    assert m.consider('Remember task: finish the accessibility presentation')
+    assert m.consider('Remember context: reports are in the Documents folder')
+    assert m.retrieve('presentation')
+    assert not m.consider('Remember context: my password is hunter2')
+    assert not m.consider('I browsed a medical report today')
+    m.close()

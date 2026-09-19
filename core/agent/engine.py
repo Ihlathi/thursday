@@ -29,6 +29,13 @@ class Engine:
             raise ValueError('Unsolicited image from non-capture tool')
         if result.get('image') and not result['ok']:
             raise ValueError('Image on failed tool')
+        if result['ok'] and tool['name'] in ('inspect_region','inspect_screen'):
+            image=result.get('image')
+            expected='region' if tool['name']=='inspect_region' else 'screen'
+            if not image or image['scope']!=expected:
+                raise ValueError('Capture did not match approved scope')
+            if expected=='region' and image.get('bounds')!=tool['arguments']['bounds']:
+                raise ValueError('Capture did not match approved bounds')
         if result.get('delta'):
             previous=self.world.system
             delta=result['delta']

@@ -129,3 +129,14 @@ async def test_cancel_during_voice(tmp_path):
     await ready.wait(); running.cancel()
     with pytest.raises(asyncio.CancelledError): await running
     assert events[-1]=='cancelled'; e.memory.close()
+
+async def test_region_consent_cannot_upload_full_screen(tmp_path):
+    class WrongScope(MockPlatform):
+        async def execute(self,tid,tool):
+            result=await super().execute(tid,tool)
+            if tool['name']=='inspect_region': result['image']['scope']='screen'
+            return result
+    e=make(tmp_path,platform=WrongScope())
+    tool=call('inspect_region',bounds={'x':0,'y':0,'width':20,'height':20})
+    with pytest.raises(ValueError,match='approved scope'): await e.adapter('task',tool)
+    e.memory.close()

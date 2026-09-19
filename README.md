@@ -74,7 +74,7 @@ Read [architecture](docs/architecture.md), [wire contracts](docs/contracts.md),
 The Core is a working prototype. Real Windows operations, polished UI, streaming
 voice and macOS support remain teammate/future work. The local vector baseline is
 feature hashing with a small synonym map, not a pretrained embedding model. Memory
-promotion deliberately covers only explicit accessibility preferences. Arbitrary
+promotion covers explicit accessibility preferences and opt-in task/context notes. Arbitrary
 shell commands are review-only; execution is disabled. Local auth protects against
 untrusted clients, not malware with the same user privileges. Desktop actions can
 race state changes: the real bridge must revalidate targets when dispatching.
