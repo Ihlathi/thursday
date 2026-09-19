@@ -1,0 +1,23 @@
+html, body, #app {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent !important;
+  pointer-events: none;
+  user-select: none;
+}
+canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 550ms ease;
+}
+canvas.visible { opacity: 1; }
+canvas.visible.settled { animation: breathe 8s ease-in-out infinite; }
+@keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.9; } }
+@media (prefers-reduced-motion: reduce) {
+  canvas.visible.settled { animation: none; }
+}
