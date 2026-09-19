@@ -1,0 +1,524 @@
+{
+  "version": "1.0",
+  "tools": {
+    "get_system_state": {
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "READ_ONLY",
+      "privacy": "local",
+      "description": "get system state"
+    },
+    "get_ui_state": {
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "READ_ONLY",
+      "privacy": "local",
+      "description": "get ui state"
+    },
+    "open_app": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "REVERSIBLE",
+      "privacy": "local",
+      "description": "open app"
+    },
+    "open_url": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "CONSEQUENTIAL",
+      "privacy": "local",
+      "description": "open url"
+    },
+    "set_setting": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "setting": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "value": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        "required": [
+          "setting",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "SECURITY_SENSITIVE",
+      "privacy": "local",
+      "description": "set setting"
+    },
+    "search_ui": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "core",
+      "risk": "READ_ONLY",
+      "privacy": "local",
+      "description": "Retrieve relevant UI elements locally. Call before broader UI inspection."
+    },
+    "inspect_ui": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,100}$"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "core",
+      "risk": "READ_ONLY",
+      "privacy": "local",
+      "description": "inspect ui"
+    },
+    "invoke_ui": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,100}$"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "visible"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "mode"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "CONSEQUENTIAL",
+      "privacy": "local",
+      "description": "invoke ui"
+    },
+    "set_ui_value": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,100}$"
+          },
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "id",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "CONSEQUENTIAL",
+      "privacy": "local",
+      "description": "set ui value"
+    },
+    "scroll": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down",
+              "left",
+              "right"
+            ]
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          }
+        },
+        "required": [
+          "direction",
+          "amount"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "REVERSIBLE",
+      "privacy": "local",
+      "description": "scroll"
+    },
+    "move_mouse": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "REVERSIBLE",
+      "privacy": "local",
+      "description": "move mouse"
+    },
+    "click": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "CONSEQUENTIAL",
+      "privacy": "local",
+      "description": "click"
+    },
+    "type_text": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "CONSEQUENTIAL",
+      "privacy": "local",
+      "description": "type text"
+    },
+    "press_key": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "CONSEQUENTIAL",
+      "privacy": "local",
+      "description": "press key"
+    },
+    "inspect_screen": {
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "CONSEQUENTIAL",
+      "privacy": "cloud_image",
+      "description": "inspect screen"
+    },
+    "inspect_region": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bounds": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "width": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "x",
+              "y",
+              "width",
+              "height"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "bounds"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "CONSEQUENTIAL",
+      "privacy": "cloud_image",
+      "description": "inspect region"
+    },
+    "open_file": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "CONSEQUENTIAL",
+      "privacy": "local",
+      "description": "open file"
+    },
+    "open_folder": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "CONSEQUENTIAL",
+      "privacy": "local",
+      "description": "open folder"
+    },
+    "run_approved_action": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "set_volume",
+              "set_brightness"
+            ]
+          },
+          "args": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "action",
+          "args"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "platform",
+      "risk": "REVERSIBLE",
+      "privacy": "local",
+      "description": "run approved action"
+    },
+    "propose_command": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "command",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "core",
+      "risk": "SECURITY_SENSITIVE",
+      "privacy": "local",
+      "description": "Propose a shell command for review. This build never executes arbitrary shell."
+    },
+    "ask_user": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "core",
+      "risk": "READ_ONLY",
+      "privacy": "local",
+      "description": "ask user"
+    },
+    "request_confirmation": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "consequence": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "action",
+          "consequence"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "core",
+      "risk": "CONSEQUENTIAL",
+      "privacy": "local",
+      "description": "Ask about an intent. Does not grant authorization to any later tool."
+    },
+    "complete_task": {
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "owner": "core",
+      "risk": "READ_ONLY",
+      "privacy": "local",
+      "description": "complete task"
+    }
+  }
+}

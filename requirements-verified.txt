@@ -1,0 +1,8 @@
+# Direct dependency versions verified in this repository on 2026-09-19.
+# Optional reproducible starting point: pip install -r requirements-verified.txt
+websockets==15.0.1
+jsonschema==4.26.0
+httpx==0.28.1
+google-genai==2.24.0
+pytest==9.1.1
+pytest-asyncio==1.4.0

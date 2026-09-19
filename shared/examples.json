@@ -1,0 +1,67 @@
+[
+  {
+    "version": "1.0",
+    "type": "user_request",
+    "request_id": "request1",
+    "payload": {
+      "text": "show my recent purchases"
+    },
+    "task_id": "task1"
+  },
+  {
+    "version": "1.0",
+    "type": "tool_call",
+    "request_id": "call-request1",
+    "payload": {
+      "call_id": "82e1bdd657c54b2e96afa7316ca07ffe",
+      "name": "get_ui_state",
+      "arguments": {}
+    },
+    "task_id": "task1"
+  },
+  {
+    "version": "1.0",
+    "type": "tool_result",
+    "request_id": "call-request2",
+    "payload": {
+      "call_id": "example-call",
+      "ok": true,
+      "delta": {
+        "revision": 1,
+        "full": true,
+        "elements": [
+          {
+            "id": "orders",
+            "role": "button",
+            "name": "Returns & Orders",
+            "description": "View recent purchases and order history",
+            "bounds": {
+              "x": 20,
+              "y": 20,
+              "width": 180,
+              "height": 40
+            },
+            "enabled": true,
+            "visible": true,
+            "parent": null,
+            "children": [],
+            "source": "mock",
+            "confidence": 1.0,
+            "sensitive": false,
+            "action_kind": "navigation"
+          }
+        ]
+      }
+    },
+    "task_id": "task1"
+  },
+  {
+    "version": "1.0",
+    "type": "cancel",
+    "request_id": "eaa9b8dbc83a458a9177c6d7955f67b0",
+    "payload": {
+      "reason": "User requested cancellation"
+    },
+    "task_id": "task1"
+  }
+]

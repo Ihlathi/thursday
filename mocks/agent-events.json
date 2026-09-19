@@ -1,0 +1,32 @@
+[
+  {
+    "version": "1.0",
+    "type": "agent_event",
+    "request_id": "request",
+    "payload": {
+      "status": "thinking",
+      "message": "Finding the matching control\u2026"
+    },
+    "task_id": "demo"
+  },
+  {
+    "version": "1.0",
+    "type": "agent_event",
+    "request_id": "request",
+    "payload": {
+      "status": "acting",
+      "message": "Opening Returns & Orders directly."
+    },
+    "task_id": "demo"
+  },
+  {
+    "version": "1.0",
+    "type": "agent_event",
+    "request_id": "request",
+    "payload": {
+      "status": "completed",
+      "message": "Mock preview: your recent orders are open."
+    },
+    "task_id": "demo"
+  }
+]
