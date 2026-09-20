@@ -21,10 +21,10 @@ async def test_gemini_multimodal_and_native_signature_preserved():
     tool=turn.calls[0]
     await model.next({'request':'continue'},[(tool,{'call_id':tool['call_id'],'ok':True,'image':{'data':PIXEL,'mime_type':'image/png','scope':'screen'}})])
     contents=seen[1]['contents']
-    assert [content.role for content in contents[:4]]==['user','model','tool','user']
+    assert [content.role for content in contents[:3]]==['user','model','user']
     assert contents[2].parts[0].function_response.id=='provider-call'
+    assert contents[2].parts[0].function_response.response['context']['request']=='continue'
     assert any(p.inline_data and p.inline_data.data==base64.b64decode(PIXEL) for p in contents[2].parts)
-    assert all(not p.function_response for p in contents[3].parts)
 
 async def test_voice_http_contracts(monkeypatch):
     monkeypatch.setenv('ELEVENLABS_API_KEY','test-key'); monkeypatch.setenv('ELEVENLABS_VOICE_ID','test-voice')
