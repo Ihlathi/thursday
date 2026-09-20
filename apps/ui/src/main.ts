@@ -11,10 +11,10 @@ const dismissDuration = 460;
 
 // Cursor-control visual tuning. These values are intentionally centralized for quick iteration.
 const CURSOR_TUNING = {
-  auraGlowRadius: 90,
-  auraInnerGlowIntensity: 0.34,
-  auraOuterBloomIntensity: 0.055,
-  auraFalloff: 0.78,
+  auraGlowRadius: 118,
+  auraInnerGlowIntensity: 0.44,
+  auraOuterBloomIntensity: 0.082,
+  auraFalloff: 0.82,
   auraBreathingStrength: 0.07,
   auraBreathingMs: 2400,
   trailLifetimeMs: 950,
@@ -28,20 +28,18 @@ const CURSOR_TUNING = {
   shortTrajectoryStyles: ['arc', 'asymmetric'] as const,
   mediumTrajectoryStyles: ['arc', 'sCurve', 'asymmetric', 'hook'] as const,
   longTrajectoryStyles: ['sweep', 'sCurve', 'hook', 'asymmetric'] as const,
-  cursorParticleMinDelayMs: 110,
-  cursorParticleMaxDelayMs: 230,
-  cursorParticleMinLifetimeMs: 850,
-  cursorParticleMaxLifetimeMs: 1450,
-  cursorParticleMaxCount: 14,
   clickSettleMs: 180,
   clickFieldSpacing: 48,
   clickWaveSpeed: 2050,
-  clickWaveWidth: 34,
-  clickPointIlluminationMs: 190,
-  clickFieldIntensity: 0.3,
+  clickWaveWidth: 46,
+  clickWaveIntensity: 0.13,
+  clickWaveWakeIntensity: 0.032,
+  clickPointIlluminationMs: 220,
+  clickFieldIntensity: 0.33,
   clickLocalRippleRadius: 42,
   clickLocalRippleMs: 340,
   clickLocalIntensity: 0.82,
+  clickLocalRingIntensity: 0.24,
   clickMaximumBloom: 14,
   clickDistanceAttenuation: 0.58,
   clickWaveAttackMs: 70,
@@ -108,15 +106,6 @@ interface Particle {
   brightness: number;
 }
 
-interface CursorParticle extends SummonOrigin {
-  dx: number;
-  dy: number;
-  size: number;
-  born: number;
-  lifetime: number;
-  brightness: number;
-}
-
 let particles: Particle[] = [];
 const particleTimers = [0, 0, 0, 0];
 let lastSettledFrame = 0;
@@ -128,8 +117,6 @@ let clickSequence: ClickSequence | null = null;
 let cursorPollTimer = 0;
 let lastCursorCommand = 0;
 let clickField: FieldPoint[] = [];
-let cursorParticles: CursorParticle[] = [];
-let nextCursorParticleAt = 0;
 
 function rebuildClickField() {
   clickField = [];
@@ -410,8 +397,7 @@ function drawParticles(now: number, phaseOpacity = 1) {
 }
 
 function hasCursorVisuals() {
-  return controlAuraEnabled || cursorMotion !== null || trail.length > 0
-    || clickSequence !== null || cursorParticles.length > 0;
+  return controlAuraEnabled || cursorMotion !== null || trail.length > 0 || clickSequence !== null;
 }
 
 function setCursorControlAura(enabled: boolean, at?: SummonOrigin) {
@@ -641,10 +627,11 @@ function drawClickSequence(now: number) {
       const alpha = waveAttack * (1 - smoothstep(localProgress));
       const radius = 2 + eased * CURSOR_TUNING.clickLocalRippleRadius;
       const outer = radius + CURSOR_TUNING.clickMaximumBloom;
+      const ringAlpha = alpha * CURSOR_TUNING.clickLocalRingIntensity;
       const local = ctx.createRadialGradient(clickSequence.x, clickSequence.y, 0, clickSequence.x, clickSequence.y, outer);
-      local.addColorStop(0, `rgba(255,255,255,${0.24 * alpha * CURSOR_TUNING.clickLocalIntensity})`);
-      local.addColorStop(Math.max(0, radius / outer - 0.08), `rgba(193,233,254,${0.08 * alpha})`);
-      local.addColorStop(radius / outer, `rgba(246,253,255,${0.58 * alpha})`);
+      local.addColorStop(0, `rgba(255,255,255,${0.18 * ringAlpha * CURSOR_TUNING.clickLocalIntensity})`);
+      local.addColorStop(Math.max(0, radius / outer - 0.12), `rgba(193,233,254,${0.12 * ringAlpha})`);
+      local.addColorStop(radius / outer, `rgba(246,253,255,${0.42 * ringAlpha})`);
       local.addColorStop(1, 'rgba(166,218,249,0)');
       ctx.fillStyle = local;
       ctx.fillRect(clickSequence.x - outer, clickSequence.y - outer, outer * 2, outer * 2);
@@ -657,8 +644,11 @@ function drawClickSequence(now: number) {
       const crest = (waveRadius - inner) / (outer - inner);
       const sheet = ctx.createRadialGradient(clickSequence.x, clickSequence.y, inner, clickSequence.x, clickSequence.y, outer);
       sheet.addColorStop(0, 'rgba(160,216,248,0)');
-      sheet.addColorStop(Math.max(0, crest - 0.42), `rgba(169,223,251,${0.012 * waveEnvelope})`);
-      sheet.addColorStop(crest, `rgba(226,247,255,${0.072 * waveEnvelope})`);
+      sheet.addColorStop(Math.max(0, crest - 0.62), `rgba(163,219,250,${0.008 * waveEnvelope})`);
+      sheet.addColorStop(Math.max(0, crest - 0.34), `rgba(176,227,252,${CURSOR_TUNING.clickWaveWakeIntensity * waveEnvelope})`);
+      sheet.addColorStop(Math.max(0, crest - 0.12), `rgba(202,239,255,${CURSOR_TUNING.clickWaveIntensity * 0.46 * waveEnvelope})`);
+      sheet.addColorStop(crest, `rgba(237,250,255,${CURSOR_TUNING.clickWaveIntensity * waveEnvelope})`);
+      sheet.addColorStop(Math.min(1, crest + 0.1), `rgba(191,232,253,${CURSOR_TUNING.clickWaveIntensity * 0.2 * waveEnvelope})`);
       sheet.addColorStop(1, 'rgba(160,216,248,0)');
       ctx.fillStyle = sheet;
       ctx.fillRect(0, 0, width, height);
@@ -723,58 +713,6 @@ function cursorGlowPath(at: SummonOrigin, scale = 1) {
   return path;
 }
 
-function spawnCursorParticle(now: number) {
-  if (cursorParticles.length >= CURSOR_TUNING.cursorParticleMaxCount) return;
-  const anchors = [
-    { x: 0.5, y: 1 }, { x: 1.2, y: 9 }, { x: 2.2, y: 17 },
-    { x: 7.2, y: 14.5 }, { x: 11.5, y: 13.5 }, { x: 10.5, y: 22 },
-  ];
-  const anchor = anchors[Math.floor(Math.random() * anchors.length)];
-  const baseAngle = Math.atan2(anchor.y - 11, anchor.x - 5.5);
-  const angle = baseAngle + (Math.random() - 0.5) * 1.05;
-  const travel = 18 + Math.random() * 25;
-  cursorParticles.push({
-    x: cursorPosition.x + anchor.x + (Math.random() - 0.5) * 2.5,
-    y: cursorPosition.y + anchor.y + (Math.random() - 0.5) * 2.5,
-    dx: Math.cos(angle) * travel,
-    dy: Math.sin(angle) * travel,
-    size: 0.34 + Math.random() * 0.48,
-    born: now,
-    lifetime: CURSOR_TUNING.cursorParticleMinLifetimeMs
-      + Math.random() * (CURSOR_TUNING.cursorParticleMaxLifetimeMs - CURSOR_TUNING.cursorParticleMinLifetimeMs),
-    brightness: 0.2 + Math.random() * 0.24,
-  });
-}
-
-function drawCursorParticles(now: number) {
-  const emitting = controlAuraEnabled || cursorMotion !== null || clickSequence !== null;
-  if (emitting && now >= nextCursorParticleAt) {
-    spawnCursorParticle(now);
-    const delayRange = CURSOR_TUNING.cursorParticleMaxDelayMs - CURSOR_TUNING.cursorParticleMinDelayMs;
-    nextCursorParticleAt = now + CURSOR_TUNING.cursorParticleMinDelayMs + Math.random() * delayRange;
-  } else if (!emitting) {
-    nextCursorParticleAt = 0;
-  }
-
-  cursorParticles = cursorParticles.filter((particle) => now - particle.born < particle.lifetime);
-  for (const particle of cursorParticles) {
-    const progress = clamp((now - particle.born) / particle.lifetime);
-    const drift = smoothstep(progress);
-    const opacity = Math.sin(progress * Math.PI) * particle.brightness;
-    const x = particle.x + particle.dx * drift;
-    const y = particle.y + particle.dy * drift;
-    const haloRadius = 2.8 + particle.size * 5.8;
-    const glow = ctx.createRadialGradient(x, y, 0, x, y, haloRadius);
-    glow.addColorStop(0, `rgba(250,254,255,${0.78 * opacity})`);
-    glow.addColorStop(0.1, `rgba(230,247,255,${0.58 * opacity})`);
-    glow.addColorStop(0.34, `rgba(203,237,255,${0.3 * opacity})`);
-    glow.addColorStop(0.62, `rgba(174,224,252,${0.1 * opacity})`);
-    glow.addColorStop(1, 'rgba(154,214,249,0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(x - haloRadius, y - haloRadius, haloRadius * 2, haloRadius * 2);
-  }
-}
-
 function drawCursorAura(now: number, focus: number) {
   if (!controlAuraEnabled && !cursorMotion && !clickSequence) return;
   const breathe = 1 + Math.sin((now / CURSOR_TUNING.auraBreathingMs) * Math.PI * 2)
@@ -815,17 +753,17 @@ function drawCursorAura(now: number, focus: number) {
   }
 
   // The close light follows the attached arrow cursor's silhouette; blur turns it into bloom, not an outline.
-  const silhouette = cursorGlowPath(cursorPosition, 1.02);
+  const silhouette = cursorGlowPath(cursorPosition, 1.16);
   ctx.save();
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 0;
-  ctx.shadowColor = `rgba(171,224,253,${0.4 * focusIntensity})`;
-  ctx.shadowBlur = 30 * breathe;
-  ctx.fillStyle = `rgba(203,239,255,${CURSOR_TUNING.auraOuterBloomIntensity * 0.9 * focusIntensity})`;
+  ctx.shadowColor = `rgba(171,224,253,${0.5 * focusIntensity})`;
+  ctx.shadowBlur = 42 * breathe;
+  ctx.fillStyle = `rgba(203,239,255,${CURSOR_TUNING.auraOuterBloomIntensity * 1.05 * focusIntensity})`;
   ctx.fill(silhouette);
   ctx.shadowColor = `rgba(219,244,255,${0.66 * focusIntensity})`;
-  ctx.shadowBlur = 12 * breathe;
-  ctx.fillStyle = `rgba(242,251,255,${CURSOR_TUNING.auraInnerGlowIntensity * 0.24 * focusIntensity})`;
+  ctx.shadowBlur = 17 * breathe;
+  ctx.fillStyle = `rgba(242,251,255,${CURSOR_TUNING.auraInnerGlowIntensity * 0.3 * focusIntensity})`;
   ctx.fill(silhouette);
   ctx.restore();
 
@@ -843,7 +781,6 @@ function drawCursorSystem(now: number) {
   drawTrail(now);
   const focus = drawClickSequence(now);
   drawCursorAura(now, focus);
-  drawCursorParticles(now);
 }
 
 function testMovementTarget(from: SummonOrigin) {
