@@ -10,9 +10,10 @@ flowchart LR
   Core --> World[Ephemeral structured world + UI vectors]
 ```
 
-The complete runnable vertical slice is Python Core + fake desktop + terminal UI.
-Tauri and Windows are intentionally teammate scaffolds. Real OS control is not
-implemented. Mock mode is conspicuously labeled and never billed as Gemini output.
+The offline vertical slice remains Python Core + fake desktop + terminal UI. The
+integrated Windows path adds a Tauri overlay and a real Windows bridge using UIA,
+direct system APIs and guarded fallback input. Mock mode is conspicuously labeled
+and never billed as Gemini output.
 Every real typed/transcribed request enters Gemini before any tool. No fast intent
 router exists; `model_factory` is the extension seam for future routing experiments.
 

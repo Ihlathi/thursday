@@ -1,9 +1,9 @@
 # Adaptive Computer Accessibility Agent
 
-A hackathon monorepo for operating and troubleshooting computers through natural
-intent. Python Core is implemented and independently runnable. Tauri 2 UI and
-Windows bridge are teammate scaffolds; macOS is future work. Prefer direct APIs
-and accessibility over screenshot/mouse control.
+A hackathon monorepo for operating and troubleshooting Windows through natural
+intent. It includes a Python Core, a Tauri 2 accessibility overlay and a Windows
+UI Automation bridge. macOS is future work. Prefer direct APIs and accessibility
+over screenshot/mouse control.
 
 ## Quick start — offline, no API keys
 
@@ -20,6 +20,20 @@ pytest -q
 
 On Windows PowerShell use `py -3 -m venv .venv` and
 `.venv\Scripts\Activate.ps1` instead of the first two commands.
+
+For the integrated Windows desktop in development, install the Python Windows
+extra plus the UI dependencies and use the trusted launcher:
+
+```powershell
+python -m pip install -e ".[dev,windows]"
+cd apps\ui; npm install; cd ..\..
+python run.py desktop --mode gemini
+```
+
+The launcher creates fresh private UI/platform tokens, gives each child only the
+credentials it needs, starts Core and the Windows bridge, and opens the Tauri UI.
+Use `Ctrl+Alt+J` to show it. Use `--mode mock --platform mock` for a safe UI demo
+that performs no real OS or cloud actions.
 
 `demo` runs Core against an in-process fake desktop. `mocks.stack` starts real local
 WebSockets with Core, mock platform and mock UI, authenticates both roles, executes
@@ -58,8 +72,8 @@ offline tests. See [provider setup](docs/providers.md).
 |---|---|
 | `core/agent/` | Model loop, policy, context, memory, providers and transport |
 | `shared/` | Canonical protocol schemas and tool catalog |
-| `apps/ui/` | Tauri 2 mock event preview + UI teammate contract |
-| `platform/windows/` | Windows bridge contract, implementation guidance |
+| `apps/ui/` | Tauri 2 accessible overlay and authenticated Core client |
+| `platform/windows/` | Windows UIA/direct-API bridge and safety guards |
 | `platform/macos/` | Future adapter placeholder |
 | `mocks/` | Independent fake platform, UI harness and socket stack |
 | `tests/` | Focused offline unit/provider/contract/WebSocket tests |
@@ -71,8 +85,10 @@ Read [architecture](docs/architecture.md), [wire contracts](docs/contracts.md),
 
 ## Honest boundaries
 
-The Core is a working prototype. Real Windows operations, polished UI, streaming
-voice and macOS support remain teammate/future work. The local vector baseline is
+The integrated Windows build remains a prototype. The native bridge uses real
+Windows operations, but UIA behavior varies by application and requires hands-on
+testing on the target machine. Voice uses complete recordings rather than live
+streaming, and macOS remains future work. The local vector baseline is
 feature hashing with a small synonym map, not a pretrained embedding model. Memory
 promotion covers explicit accessibility preferences and opt-in task/context notes. Arbitrary
 shell commands are review-only; execution is disabled. Local auth protects against

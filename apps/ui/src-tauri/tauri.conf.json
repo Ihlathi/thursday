@@ -10,7 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "withGlobalTauri": true,
+    "withGlobalTauri": false,
     "windows": [
       {
         "label": "main",
@@ -27,7 +27,9 @@
       }
     ],
     "security": {
-      "csp": null
+      "freezePrototype": true,
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' data:; media-src data: blob:; style-src 'self'",
+      "devCsp": "default-src 'self'; connect-src ipc: http://ipc.localhost ws://localhost:1421 ws://127.0.0.1:1421; img-src 'self' data:; media-src data: blob:; style-src 'self'"
     }
   },
   "bundle": {
