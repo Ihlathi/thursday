@@ -11,10 +11,10 @@ const dismissDuration = 460;
 
 // Cursor-control visual tuning. These values are intentionally centralized for quick iteration.
 const CURSOR_TUNING = {
-  auraGlowRadius: 30,
-  auraInnerGlowIntensity: 0.3,
-  auraOuterBloomIntensity: 0.085,
-  auraFalloff: 0.68,
+  auraGlowRadius: 90,
+  auraInnerGlowIntensity: 0.34,
+  auraOuterBloomIntensity: 0.055,
+  auraFalloff: 0.78,
   auraBreathingStrength: 0.07,
   auraBreathingMs: 2400,
   trailLifetimeMs: 950,
@@ -41,6 +41,8 @@ const CURSOR_TUNING = {
   clickLocalIntensity: 0.82,
   clickMaximumBloom: 14,
   clickDistanceAttenuation: 0.58,
+  clickWaveAttackMs: 70,
+  clickWaveReleaseMs: 180,
 } as const;
 type OverlayPhase = 'idle' | 'summoning' | 'settled' | 'dismissing';
 let phase: OverlayPhase = 'idle';
@@ -586,11 +588,16 @@ function drawClickSequence(now: number) {
     const waveRadius = waveElapsed * CURSOR_TUNING.clickWaveSpeed / 1000;
     const waveDuration = maximumDistance / CURSOR_TUNING.clickWaveSpeed * 1000;
     const localProgress = clamp(waveElapsed / CURSOR_TUNING.clickLocalRippleMs);
+    const waveAttack = smoothstep(clamp(waveElapsed / CURSOR_TUNING.clickWaveAttackMs));
+    const waveRelease = 1 - smoothstep(clamp(
+      (waveElapsed - waveDuration) / CURSOR_TUNING.clickWaveReleaseMs,
+    ));
+    const waveEnvelope = waveAttack * waveRelease;
 
     // A glossy local response establishes exactly where the click occurred.
     if (localProgress < 1) {
       const eased = 1 - Math.pow(1 - localProgress, 3);
-      const alpha = 1 - smoothstep(localProgress);
+      const alpha = waveAttack * (1 - smoothstep(localProgress));
       const radius = 2 + eased * CURSOR_TUNING.clickLocalRippleRadius;
       const outer = radius + CURSOR_TUNING.clickMaximumBloom;
       const local = ctx.createRadialGradient(clickSequence.x, clickSequence.y, 0, clickSequence.x, clickSequence.y, outer);
@@ -609,8 +616,8 @@ function drawClickSequence(now: number) {
       const crest = (waveRadius - inner) / (outer - inner);
       const sheet = ctx.createRadialGradient(clickSequence.x, clickSequence.y, inner, clickSequence.x, clickSequence.y, outer);
       sheet.addColorStop(0, 'rgba(160,216,248,0)');
-      sheet.addColorStop(Math.max(0, crest - 0.42), 'rgba(169,223,251,0.012)');
-      sheet.addColorStop(crest, 'rgba(226,247,255,0.072)');
+      sheet.addColorStop(Math.max(0, crest - 0.42), `rgba(169,223,251,${0.012 * waveEnvelope})`);
+      sheet.addColorStop(crest, `rgba(226,247,255,${0.072 * waveEnvelope})`);
       sheet.addColorStop(1, 'rgba(160,216,248,0)');
       ctx.fillStyle = sheet;
       ctx.fillRect(0, 0, width, height);
@@ -624,7 +631,9 @@ function drawClickSequence(now: number) {
       const arrival = distance / CURSOR_TUNING.clickWaveSpeed * 1000;
       const pointAge = waveElapsed - arrival;
       if (pointAge < 0 || pointAge > CURSOR_TUNING.clickPointIlluminationMs) continue;
-      const illumination = Math.sin((pointAge / CURSOR_TUNING.clickPointIlluminationMs) * Math.PI);
+      const illumination = smoothstep(Math.sin(
+        (pointAge / CURSOR_TUNING.clickPointIlluminationMs) * Math.PI,
+      ));
       const attenuation = 1 - (distance / Math.max(1, maximumDistance)) * CURSOR_TUNING.clickDistanceAttenuation;
       const alpha = illumination * attenuation * point.reflectivity * CURSOR_TUNING.clickFieldIntensity;
       const size = point.size * (1 + illumination * 0.42);
@@ -635,7 +644,10 @@ function drawClickSequence(now: number) {
     }
     ctx.restore();
 
-    const flash = (1 - clamp(waveElapsed / 85)) * CURSOR_TUNING.clickLocalIntensity;
+    const flashProgress = clamp(waveElapsed / 110);
+    const flash = Math.sin(flashProgress * Math.PI)
+      * (1 - smoothstep(flashProgress) * 0.35)
+      * CURSOR_TUNING.clickLocalIntensity;
     if (flash > 0) {
       const glow = ctx.createRadialGradient(clickSequence.x, clickSequence.y, 0, clickSequence.x, clickSequence.y, 13);
       glow.addColorStop(0, `rgba(255,255,255,${flash})`);
@@ -645,7 +657,10 @@ function drawClickSequence(now: number) {
       ctx.fillRect(clickSequence.x - 13, clickSequence.y - 13, 26, 26);
     }
 
-    if (waveElapsed >= waveDuration + CURSOR_TUNING.clickPointIlluminationMs) clickSequence = null;
+    if (waveElapsed >= waveDuration + Math.max(
+      CURSOR_TUNING.clickPointIlluminationMs,
+      CURSOR_TUNING.clickWaveReleaseMs,
+    )) clickSequence = null;
   }
   return elapsed < CURSOR_TUNING.clickSettleMs
     ? smoothstep(settle)
@@ -669,26 +684,29 @@ function drawCursorAura(now: number, focus: number) {
     cursorPosition.y,
     radius,
   );
-  outer.addColorStop(0, `rgba(211,241,255,${CURSOR_TUNING.auraOuterBloomIntensity * 1.5 * focusIntensity})`);
-  outer.addColorStop(0.24, `rgba(187,229,253,${CURSOR_TUNING.auraOuterBloomIntensity * focusIntensity})`);
-  outer.addColorStop(CURSOR_TUNING.auraFalloff, `rgba(157,216,250,${CURSOR_TUNING.auraOuterBloomIntensity * 0.25})`);
+  outer.addColorStop(0, `rgba(211,241,255,${CURSOR_TUNING.auraOuterBloomIntensity * 1.3 * focusIntensity})`);
+  outer.addColorStop(0.12, `rgba(198,235,254,${CURSOR_TUNING.auraOuterBloomIntensity * focusIntensity})`);
+  outer.addColorStop(0.34, `rgba(187,229,253,${CURSOR_TUNING.auraOuterBloomIntensity * 0.56})`);
+  outer.addColorStop(0.62, `rgba(166,220,250,${CURSOR_TUNING.auraOuterBloomIntensity * 0.2})`);
+  outer.addColorStop(CURSOR_TUNING.auraFalloff, `rgba(157,216,250,${CURSOR_TUNING.auraOuterBloomIntensity * 0.06})`);
   outer.addColorStop(1, 'rgba(145,205,244,0)');
   ctx.fillStyle = outer;
   ctx.fillRect(cursorPosition.x - radius, cursorPosition.y - radius, radius * 2, radius * 2);
 
   // Two faint offset lobes keep the bloom from reading as a perfect geometric disc.
-  for (const [offsetX, offsetY, scale] of [[-0.16, 0.08, 0.72], [0.13, -0.12, 0.58]]) {
+  for (const [offsetX, offsetY, scale] of [[-0.14, 0.07, 0.78], [0.12, -0.11, 0.66]]) {
     const lobeRadius = radius * scale;
     const x = cursorPosition.x + radius * offsetX;
     const y = cursorPosition.y + radius * offsetY;
     const lobe = ctx.createRadialGradient(x, y, 0, x, y, lobeRadius);
-    lobe.addColorStop(0, `rgba(190,231,253,${CURSOR_TUNING.auraOuterBloomIntensity * 0.42})`);
+    lobe.addColorStop(0, `rgba(190,231,253,${CURSOR_TUNING.auraOuterBloomIntensity * 0.3})`);
+    lobe.addColorStop(0.54, `rgba(168,220,251,${CURSOR_TUNING.auraOuterBloomIntensity * 0.08})`);
     lobe.addColorStop(1, 'rgba(145,205,244,0)');
     ctx.fillStyle = lobe;
     ctx.fillRect(x - lobeRadius, y - lobeRadius, lobeRadius * 2, lobeRadius * 2);
   }
 
-  const innerRadius = radius * 0.3;
+  const innerRadius = Math.min(24, radius * 0.3);
   const inner = ctx.createRadialGradient(cursorPosition.x, cursorPosition.y, 0, cursorPosition.x, cursorPosition.y, innerRadius);
   inner.addColorStop(0, `rgba(252,255,255,${CURSOR_TUNING.auraInnerGlowIntensity * focusIntensity})`);
   inner.addColorStop(0.3, `rgba(222,245,255,${CURSOR_TUNING.auraInnerGlowIntensity * 0.56})`);
