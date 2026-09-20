@@ -1,0 +1,68 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b1016;
+  --panel: #141c25;
+  --line: #22303d;
+  --ink: #e6f2fa;
+  --muted: #8ba3b6;
+  --accent: #6fc8f5;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font: 14px/1.5 system-ui, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+h1 { font-size: 15px; letter-spacing: 0.18em; margin: 0; }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin: 0 0 10px; }
+.pill {
+  font-size: 12px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+main { padding: 16px 18px 28px; display: grid; gap: 16px; }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+label.check { display: flex; align-items: center; gap: 8px; color: var(--ink); }
+input[type="text"], input[type="password"], input[type="number"], select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  background: #0d141b;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  font: inherit;
+}
+input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.row { display: flex; gap: 10px; align-items: flex-end; }
+.row > label { flex: 1; }
+.row > input[type="text"] { flex: 1; }
+.actions { margin-top: 4px; }
+button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: #06131c;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+button.ghost { background: transparent; border-color: var(--line); color: var(--ink); }
+.hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+.confirm { border: 1px solid var(--accent); border-radius: 8px; padding: 12px; margin-top: 12px; }
+.confirm p { margin: 0 0 8px; }
+ol { list-style: none; margin: 12px 0 0; padding: 0; max-height: 220px; overflow: auto; font-family: ui-monospace, monospace; font-size: 12px; }
+ol li { padding: 4px 0; border-bottom: 1px solid var(--line); color: var(--muted); word-break: break-word; }

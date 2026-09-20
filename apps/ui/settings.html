@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/settings.css" />
+    <title>Thursday settings</title>
+    <script type="module" src="/src/settings.ts" defer></script>
+  </head>
+  <body>
+    <header>
+      <h1>THURSDAY</h1>
+      <span id="process-state" class="pill">Core: unknown</span>
+      <span id="core-state" class="pill">Socket: connecting</span>
+    </header>
+
+    <main>
+      <section>
+        <h2>Providers</h2>
+        <label>Gemini API key<input id="gemini_api_key" type="password" autocomplete="off" spellcheck="false" placeholder="paste key" /></label>
+        <label>Gemini model<input id="gemini_model" type="text" spellcheck="false" /></label>
+        <label>ElevenLabs API key<input id="elevenlabs_api_key" type="password" autocomplete="off" spellcheck="false" placeholder="optional" /></label>
+        <label>ElevenLabs voice ID<input id="elevenlabs_voice_id" type="text" spellcheck="false" placeholder="optional" /></label>
+        <label class="check"><input id="speak_replies" type="checkbox" /> Speak replies aloud (needs the ElevenLabs key and voice ID)</label>
+        <p class="hint">Hold-free push to talk: <strong>Ctrl+Alt+J</strong> starts listening, a second press ends the recording early, and a third cancels a task in flight.</p>
+        <p class="hint">Keys stay in this machine's app config folder and are passed to Core as environment variables only. They never cross the UI socket.</p>
+      </section>
+
+      <section>
+        <h2>Core</h2>
+        <div class="row">
+          <label>Mode<select id="model_mode"><option value="mock">mock</option><option value="gemini">gemini</option></select></label>
+          <label>Port<input id="core_port" type="number" min="1" max="65535" /></label>
+        </div>
+        <label>Python command<input id="python_path" type="text" spellcheck="false" /></label>
+        <p class="hint">Prefer the absolute interpreter path, e.g. <code>C:\…\repo\.venv\Scripts\python.exe</code>. The bare <code>py</code> launcher picks up whatever interpreter the desktop app's environment points at.</p>
+        <label>Repository path<input id="repo_path" type="text" spellcheck="false" placeholder="C:\path\to\adaptive-computer-accessibility-agent" /></label>
+        <label class="check"><input id="autostart_core" type="checkbox" /> Start Core when the app launches</label>
+        <label class="check"><input id="start_bridge" type="checkbox" /> Also start the Windows bridge (the process that touches the desktop)</label>
+        <div class="row actions">
+          <button id="save" type="button">Save</button>
+          <button id="start" type="button">Start Core</button>
+          <button id="stop" type="button" class="ghost">Stop Core</button>
+          <button id="free" type="button" class="ghost">Free port</button>
+        </div>
+        <p class="hint" id="save-state"></p>
+        <p class="hint">Both children log to <code>_agent/out/core.log</code> and <code>_agent/out/bridge.log</code> in the repository.</p>
+      </section>
+
+      <section>
+        <h2>Test</h2>
+        <div class="row">
+          <input id="request" type="text" value="show me the stuff I bought recently" />
+          <button id="send" type="button">Send</button>
+          <button id="cancel" type="button" class="ghost">Cancel</button>
+        </div>
+        <div id="confirm" class="confirm" hidden>
+          <p><strong id="confirm-action"></strong></p>
+          <p id="confirm-consequence"></p>
+          <p class="hint"><span id="confirm-risk"></span> · expires <span id="confirm-expiry"></span></p>
+          <div class="row">
+            <button id="approve" type="button">Approve</button>
+            <button id="deny" type="button" class="ghost">Deny</button>
+          </div>
+        </div>
+        <div id="reply" class="confirm" hidden>
+          <p id="reply-question"></p>
+          <div class="row">
+            <input id="reply-text" type="text" />
+            <button id="reply-send" type="button">Reply</button>
+          </div>
+        </div>
+        <ol id="events" aria-live="polite"></ol>
+      </section>
+    </main>
+  </body>
+</html>
