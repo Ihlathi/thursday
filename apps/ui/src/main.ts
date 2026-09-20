@@ -11,9 +11,10 @@ const dismissDuration = 460;
 
 // Cursor-control visual tuning. These values are intentionally centralized for quick iteration.
 const CURSOR_TUNING = {
-  auraGlowRadius: 118,
-  auraInnerGlowIntensity: 0.44,
-  auraOuterBloomIntensity: 0.082,
+  auraGlowRadius: 126,
+  auraCoreRadius: 44,
+  auraInnerGlowIntensity: 0.18,
+  auraOuterBloomIntensity: 0.075,
   auraFalloff: 0.82,
   auraBreathingStrength: 0.07,
   auraBreathingMs: 2400,
@@ -28,6 +29,11 @@ const CURSOR_TUNING = {
   shortTrajectoryStyles: ['arc', 'asymmetric'] as const,
   mediumTrajectoryStyles: ['arc', 'sCurve', 'asymmetric', 'hook'] as const,
   longTrajectoryStyles: ['sweep', 'sCurve', 'hook', 'asymmetric'] as const,
+  cursorParticleMinDelayMs: 150,
+  cursorParticleMaxDelayMs: 290,
+  cursorParticleMinLifetimeMs: 900,
+  cursorParticleMaxLifetimeMs: 1500,
+  cursorParticleMaxCount: 10,
   clickSettleMs: 180,
   clickFieldSpacing: 48,
   clickWaveSpeed: 2050,
@@ -106,6 +112,15 @@ interface Particle {
   brightness: number;
 }
 
+interface CursorParticle extends SummonOrigin {
+  dx: number;
+  dy: number;
+  size: number;
+  born: number;
+  lifetime: number;
+  brightness: number;
+}
+
 let particles: Particle[] = [];
 const particleTimers = [0, 0, 0, 0];
 let lastSettledFrame = 0;
@@ -117,6 +132,8 @@ let clickSequence: ClickSequence | null = null;
 let cursorPollTimer = 0;
 let lastCursorCommand = 0;
 let clickField: FieldPoint[] = [];
+let cursorParticles: CursorParticle[] = [];
+let nextCursorParticleAt = 0;
 
 function rebuildClickField() {
   clickField = [];
@@ -397,7 +414,8 @@ function drawParticles(now: number, phaseOpacity = 1) {
 }
 
 function hasCursorVisuals() {
-  return controlAuraEnabled || cursorMotion !== null || trail.length > 0 || clickSequence !== null;
+  return controlAuraEnabled || cursorMotion !== null || trail.length > 0
+    || clickSequence !== null || cursorParticles.length > 0;
 }
 
 function setCursorControlAura(enabled: boolean, at?: SummonOrigin) {
@@ -700,80 +718,102 @@ function drawClickSequence(now: number) {
     : 1 - smoothstep(clamp(waveElapsed / 220));
 }
 
-function cursorGlowPath(at: SummonOrigin, scale = 1) {
-  const path = new Path2D();
-  path.moveTo(at.x, at.y);
-  path.lineTo(at.x + 1.2 * scale, at.y + 21.5 * scale);
-  path.lineTo(at.x + 6 * scale, at.y + 16.2 * scale);
-  path.lineTo(at.x + 10.5 * scale, at.y + 26 * scale);
-  path.lineTo(at.x + 14.1 * scale, at.y + 24.3 * scale);
-  path.lineTo(at.x + 9.6 * scale, at.y + 14.5 * scale);
-  path.lineTo(at.x + 17.7 * scale, at.y + 13.7 * scale);
-  path.closePath();
-  return path;
-}
-
 function drawCursorAura(now: number, focus: number) {
   if (!controlAuraEnabled && !cursorMotion && !clickSequence) return;
   const breathe = 1 + Math.sin((now / CURSOR_TUNING.auraBreathingMs) * Math.PI * 2)
     * CURSOR_TUNING.auraBreathingStrength;
   const radius = CURSOR_TUNING.auraGlowRadius * breathe * (1 - focus * 0.18);
   const focusIntensity = 1 + focus * 0.34;
-  const driftX = Math.sin(now / 740) * radius * 0.07;
-  const driftY = Math.cos(now / 910) * radius * 0.055;
+  const centerX = cursorPosition.x + 5;
+  const centerY = cursorPosition.y + 8;
+  const driftX = Math.sin(now / 740) * radius * 0.035;
+  const driftY = Math.cos(now / 910) * radius * 0.028;
 
   const outer = ctx.createRadialGradient(
-    cursorPosition.x + driftX,
-    cursorPosition.y + driftY,
+    centerX + driftX,
+    centerY + driftY,
     0,
-    cursorPosition.x,
-    cursorPosition.y,
+    centerX,
+    centerY,
     radius,
   );
-  outer.addColorStop(0, `rgba(211,241,255,${CURSOR_TUNING.auraOuterBloomIntensity * 1.3 * focusIntensity})`);
-  outer.addColorStop(0.12, `rgba(198,235,254,${CURSOR_TUNING.auraOuterBloomIntensity * focusIntensity})`);
-  outer.addColorStop(0.34, `rgba(187,229,253,${CURSOR_TUNING.auraOuterBloomIntensity * 0.56})`);
-  outer.addColorStop(0.62, `rgba(166,220,250,${CURSOR_TUNING.auraOuterBloomIntensity * 0.2})`);
-  outer.addColorStop(CURSOR_TUNING.auraFalloff, `rgba(157,216,250,${CURSOR_TUNING.auraOuterBloomIntensity * 0.06})`);
+  outer.addColorStop(0, `rgba(211,241,255,${CURSOR_TUNING.auraOuterBloomIntensity * 1.18 * focusIntensity})`);
+  outer.addColorStop(0.2, `rgba(197,234,253,${CURSOR_TUNING.auraOuterBloomIntensity * 0.78 * focusIntensity})`);
+  outer.addColorStop(0.46, `rgba(181,226,251,${CURSOR_TUNING.auraOuterBloomIntensity * 0.36})`);
+  outer.addColorStop(0.7, `rgba(165,219,249,${CURSOR_TUNING.auraOuterBloomIntensity * 0.1})`);
+  outer.addColorStop(CURSOR_TUNING.auraFalloff, `rgba(157,216,250,${CURSOR_TUNING.auraOuterBloomIntensity * 0.025})`);
   outer.addColorStop(1, 'rgba(145,205,244,0)');
   ctx.fillStyle = outer;
-  ctx.fillRect(cursorPosition.x - radius, cursorPosition.y - radius, radius * 2, radius * 2);
+  ctx.fillRect(centerX - radius, centerY - radius, radius * 2, radius * 2);
 
-  // Two faint offset lobes keep the bloom from reading as a perfect geometric disc.
-  for (const [offsetX, offsetY, scale] of [[-0.14, 0.07, 0.78], [0.12, -0.11, 0.66]]) {
+  // Overlapping low-opacity fields keep the illumination soft without exposing a geometric edge.
+  for (const [offsetX, offsetY, scale] of [[-0.11, 0.06, 0.74], [0.13, -0.09, 0.68]]) {
     const lobeRadius = radius * scale;
-    const x = cursorPosition.x + radius * offsetX;
-    const y = cursorPosition.y + radius * offsetY;
+    const x = centerX + radius * offsetX;
+    const y = centerY + radius * offsetY;
     const lobe = ctx.createRadialGradient(x, y, 0, x, y, lobeRadius);
-    lobe.addColorStop(0, `rgba(190,231,253,${CURSOR_TUNING.auraOuterBloomIntensity * 0.3})`);
-    lobe.addColorStop(0.54, `rgba(168,220,251,${CURSOR_TUNING.auraOuterBloomIntensity * 0.08})`);
+    lobe.addColorStop(0, `rgba(196,234,253,${CURSOR_TUNING.auraOuterBloomIntensity * 0.22 * focusIntensity})`);
+    lobe.addColorStop(0.45, `rgba(174,224,251,${CURSOR_TUNING.auraOuterBloomIntensity * 0.07})`);
     lobe.addColorStop(1, 'rgba(145,205,244,0)');
     ctx.fillStyle = lobe;
     ctx.fillRect(x - lobeRadius, y - lobeRadius, lobeRadius * 2, lobeRadius * 2);
   }
 
-  // The close light follows the attached arrow cursor's silhouette; blur turns it into bloom, not an outline.
-  const silhouette = cursorGlowPath(cursorPosition, 1.16);
-  ctx.save();
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 0;
-  ctx.shadowColor = `rgba(171,224,253,${0.5 * focusIntensity})`;
-  ctx.shadowBlur = 42 * breathe;
-  ctx.fillStyle = `rgba(203,239,255,${CURSOR_TUNING.auraOuterBloomIntensity * 1.05 * focusIntensity})`;
-  ctx.fill(silhouette);
-  ctx.shadowColor = `rgba(219,244,255,${0.66 * focusIntensity})`;
-  ctx.shadowBlur = 17 * breathe;
-  ctx.fillStyle = `rgba(242,251,255,${CURSOR_TUNING.auraInnerGlowIntensity * 0.3 * focusIntensity})`;
-  ctx.fill(silhouette);
-  ctx.restore();
+  const coreRadius = CURSOR_TUNING.auraCoreRadius * breathe;
+  const core = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, coreRadius);
+  core.addColorStop(0, `rgba(245,252,255,${CURSOR_TUNING.auraInnerGlowIntensity * focusIntensity})`);
+  core.addColorStop(0.24, `rgba(220,244,255,${CURSOR_TUNING.auraInnerGlowIntensity * 0.72 * focusIntensity})`);
+  core.addColorStop(0.56, `rgba(190,231,253,${CURSOR_TUNING.auraInnerGlowIntensity * 0.28})`);
+  core.addColorStop(0.82, `rgba(169,220,250,${CURSOR_TUNING.auraInnerGlowIntensity * 0.06})`);
+  core.addColorStop(1, 'rgba(160,216,248,0)');
+  ctx.fillStyle = core;
+  ctx.fillRect(centerX - coreRadius, centerY - coreRadius, coreRadius * 2, coreRadius * 2);
+}
 
-  const tipRadius = 8;
-  const tip = ctx.createRadialGradient(cursorPosition.x, cursorPosition.y, 0, cursorPosition.x, cursorPosition.y, tipRadius);
-  tip.addColorStop(0, `rgba(255,255,255,${CURSOR_TUNING.auraInnerGlowIntensity * 0.62 * focusIntensity})`);
-  tip.addColorStop(0.3, `rgba(220,245,255,${CURSOR_TUNING.auraInnerGlowIntensity * 0.25})`);
-  tip.addColorStop(1, 'rgba(166,222,251,0)');
-  ctx.fillStyle = tip;
-  ctx.fillRect(cursorPosition.x - tipRadius, cursorPosition.y - tipRadius, tipRadius * 2, tipRadius * 2);
+function spawnCursorParticle(now: number) {
+  if (cursorParticles.length >= CURSOR_TUNING.cursorParticleMaxCount) return;
+  const angle = Math.random() * Math.PI * 2;
+  const spawnRadius = 7 + Math.random() * 14;
+  const travel = 17 + Math.random() * 24;
+  cursorParticles.push({
+    x: cursorPosition.x + 5 + Math.cos(angle) * spawnRadius,
+    y: cursorPosition.y + 8 + Math.sin(angle) * spawnRadius,
+    dx: Math.cos(angle + (Math.random() - 0.5) * 0.55) * travel,
+    dy: Math.sin(angle + (Math.random() - 0.5) * 0.55) * travel,
+    size: 0.3 + Math.random() * 0.42,
+    born: now,
+    lifetime: CURSOR_TUNING.cursorParticleMinLifetimeMs
+      + Math.random() * (CURSOR_TUNING.cursorParticleMaxLifetimeMs - CURSOR_TUNING.cursorParticleMinLifetimeMs),
+    brightness: 0.17 + Math.random() * 0.2,
+  });
+}
+
+function drawCursorParticles(now: number) {
+  const emitting = controlAuraEnabled || cursorMotion !== null || clickSequence !== null;
+  if (emitting && now >= nextCursorParticleAt) {
+    spawnCursorParticle(now);
+    const delayRange = CURSOR_TUNING.cursorParticleMaxDelayMs - CURSOR_TUNING.cursorParticleMinDelayMs;
+    nextCursorParticleAt = now + CURSOR_TUNING.cursorParticleMinDelayMs + Math.random() * delayRange;
+  } else if (!emitting) {
+    nextCursorParticleAt = 0;
+  }
+
+  cursorParticles = cursorParticles.filter((particle) => now - particle.born < particle.lifetime);
+  for (const particle of cursorParticles) {
+    const progress = clamp((now - particle.born) / particle.lifetime);
+    const drift = smoothstep(progress);
+    const opacity = Math.sin(progress * Math.PI) * particle.brightness;
+    const x = particle.x + particle.dx * drift;
+    const y = particle.y + particle.dy * drift;
+    const haloRadius = 2.6 + particle.size * 5.5;
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, haloRadius);
+    glow.addColorStop(0, `rgba(250,254,255,${0.72 * opacity})`);
+    glow.addColorStop(0.14, `rgba(229,246,255,${0.5 * opacity})`);
+    glow.addColorStop(0.42, `rgba(199,235,254,${0.22 * opacity})`);
+    glow.addColorStop(1, 'rgba(154,214,249,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(x - haloRadius, y - haloRadius, haloRadius * 2, haloRadius * 2);
+  }
 }
 
 function drawCursorSystem(now: number) {
@@ -781,6 +821,7 @@ function drawCursorSystem(now: number) {
   drawTrail(now);
   const focus = drawClickSequence(now);
   drawCursorAura(now, focus);
+  drawCursorParticles(now);
 }
 
 function testMovementTarget(from: SummonOrigin) {
