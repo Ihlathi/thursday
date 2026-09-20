@@ -152,6 +152,7 @@ pub fn run() {
             app.manage(tray);
 
             let toggle = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyJ);
+            let settings_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyS);
             let aura = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyM);
             let movement = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyT);
             let click = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyC);
@@ -163,6 +164,8 @@ pub fn run() {
                         if event.state() == ShortcutState::Released {
                             if shortcut == &quit {
                                 app.exit(0);
+                            } else if shortcut == &settings_shortcut {
+                                show_settings(app);
                             } else if shortcut == &toggle {
                                 if let Err(error) = app.emit_to("main", "jarvis-toggle", ()) {
                                     eprintln!("Unable to toggle overlay: {error}");
@@ -190,11 +193,13 @@ pub fn run() {
                     .build(),
             )?;
             app.global_shortcut().register(toggle)?;
+            app.global_shortcut().register(settings_shortcut)?;
             app.global_shortcut().register(aura)?;
             app.global_shortcut().register(movement)?;
             app.global_shortcut().register(click)?;
             app.global_shortcut().register(action)?;
             app.global_shortcut().register(quit)?;
+            show_settings(&app.handle());
             Ok(())
         })
         .run(tauri::generate_context!())
