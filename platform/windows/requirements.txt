@@ -1,0 +1,20 @@
+# Windows bridge only. Core, the UI and mocks/platform.py do not need any of
+# this -- install it on the Windows machine that will run platform/windows/bridge.py.
+#
+#   pip install -r platform/windows/requirements.txt
+#
+# Equivalent to the project's optional extra: pip install -e ".[windows]"
+
+# UI Automation client (COM wrapper; no Windows SDK install required)
+uiautomation>=2.0.20
+comtypes>=1.2,<2
+
+# Brightness (root\wmi monitor classes) and battery/network probes
+WMI>=1.5.1
+
+# Core Audio / WASAPI: default endpoint volume+mute and per-app sessions
+pycaw>=20240210
+
+# Screen capture for inspect_screen / inspect_region
+mss>=9.0.1
+Pillow>=10.2

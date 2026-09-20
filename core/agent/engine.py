@@ -116,6 +116,13 @@ class Engine:
             await emit('cancelled',message='Task cancelled. An action already dispatched may have completed.')
             raise
         except Exception as exc:
+            provider_code=getattr(exc,'code',None)
+            provider_status=getattr(exc,'status',None)
+            provider_message=getattr(exc,'message',None)
+            if provider_code is not None or provider_status is not None:
+                await emit('debug',metadata={'kind':'provider_error','error_type':type(exc).__name__,
+                    'status_code':provider_code,'provider_status':provider_status,
+                    'provider_message':str(provider_message or '')[:500]})
             message=str(exc) if isinstance(exc,ConfigurationError) else 'Task failed: '+type(exc).__name__+'. Check provider configuration or bridge availability.'
             await emit('error',error={'code':'configuration_error' if isinstance(exc,ConfigurationError) else 'task_failed','message':message,'retryable':True})
         finally:
@@ -132,6 +139,17 @@ class Engine:
             except Exception as exc:
                 await emit('debug',metadata={'kind':'voice_unavailable','error_type':type(exc).__name__})
         await emit('completed',message=message[:4096])
+    def pointer_target(self,name,args):
+        """Screen point a platform action will drive the mouse to, when there is one."""
+        if name in ('move_mouse','click'):
+            x,y=args.get('x'),args.get('y')
+            return {'x':x,'y':y} if isinstance(x,(int,float)) and isinstance(y,(int,float)) else None
+        if name in ('invoke_ui','set_ui_value'):
+            element=self.world.elements.get(args.get('id')) or {}
+            bounds=element.get('bounds')
+            if bounds:
+                return {'x':bounds['x']+bounds['width']/2,'y':bounds['y']+bounds['height']/2}
+        return None
     @staticmethod
     def failure(tool,code,message):
         return {'call_id':tool['call_id'],'ok':False,'error':{'code':code,'message':message,'retryable':False}}
@@ -160,7 +178,10 @@ class Engine:
                     verified=await self.adapter(task_id,call('get_ui_state'))
                     if not verified['ok'] or self.world.revision!=revision:
                         return self.failure(tool,'stale_confirmation','Desktop changed; replan and request new approval.')
-            await emit('acting',metadata={'tool':name,'call_id':tool['call_id']})
+            # Tell the UI where the pointer is about to go so the overlay can
+            # animate the move before the bridge executes it.
+            pointer=self.pointer_target(name,args)
+            await emit('acting',metadata={'tool':name,'call_id':tool['call_id'],**({'pointer':pointer} if pointer else {})})
             if name=='search_ui':
                 if not self.world.elements: await self.adapter(task_id,call('get_ui_state'))
                 result={'call_id':tool['call_id'],'ok':True,'data':{'elements':self.world.search(args['query'])}}
