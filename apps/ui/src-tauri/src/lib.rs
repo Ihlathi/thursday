@@ -1,3 +1,4 @@
+mod core_link;
 use std::fs;
 use std::path::PathBuf;
 use tauri::menu::{Menu, MenuItem};
@@ -71,7 +72,10 @@ fn show_settings(app: &tauri::AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .manage(core_link::CoreLink::default())
         .invoke_handler(tauri::generate_handler![
+            core_link::core_connect,
+            core_link::core_send,
             overlay_ready,
             cursor_origin,
             set_cursor_position,
@@ -107,15 +111,31 @@ pub fn run() {
                 }
             });
 
+            let assistant = WebviewWindowBuilder::new(app, "assistant", WebviewUrl::App("index.html".into()))
+                .title("JARVIS Assistant").inner_size(650.0, 680.0).min_inner_size(480.0, 480.0)
+                .center().visible(false).build()?;
+            let assistant_close = assistant.clone();
+            assistant.on_window_event(move |event| {
+                if let WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = assistant_close.hide();
+                }
+            });
+            let assistant_item = MenuItem::with_id(app, "assistant", "Open Assistant", true, None::<&str>)?;
             let settings_item = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
             let summon_item = MenuItem::with_id(app, "summon", "Show / Summon JARVIS", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Quit JARVIS", true, None::<&str>)?;
-            let tray_menu = Menu::with_items(app, &[&settings_item, &summon_item, &quit_item])?;
+            let tray_menu = Menu::with_items(app, &[&assistant_item, &settings_item, &summon_item, &quit_item])?;
             let mut tray_builder = TrayIconBuilder::with_id("jarvis")
                 .menu(&tray_menu)
                 .tooltip("JARVIS")
                 .show_menu_on_left_click(true)
                 .on_menu_event(|app, event| match event.id().as_ref() {
+                    "assistant" => {
+                        if let Some(window) = app.get_webview_window("assistant") {
+                            let _ = window.show(); let _ = window.unminimize(); let _ = window.set_focus();
+                        }
+                    }
                     "settings" => show_settings(app),
                     "summon" => {
                         if let Err(error) = app.emit_to("main", "jarvis-toggle", ()) {

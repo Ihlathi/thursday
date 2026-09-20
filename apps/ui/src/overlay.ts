@@ -1099,6 +1099,18 @@ resize();
 addEventListener('resize', resize);
 if (isTauri()) {
   await listen<VisualSettings>(VISUAL_SETTINGS_EVENT, (event) => applyVisualSettings(event.payload));
+  await listen<string>('jarvis-agent-status', async ({ payload: status }) => {
+    if (['listening', 'thinking', 'acting', 'speaking', 'confirmation_required', 'awaiting_input'].includes(status)) {
+      if (phase === 'idle') {
+        try { summon(await invoke<SummonOrigin>('cursor_origin')); } catch { summon(); }
+      }
+    } else if (['completed', 'cancelled', 'error'].includes(status)) {
+      cursorMotion = null; trail = []; clickSequence = null; setCursorControlAura(false);
+      if (phase !== 'idle') {
+        try { dismiss(await invoke<SummonOrigin>('cursor_origin')); } catch { dismiss(); }
+      }
+    }
+  });
   await listen('jarvis-toggle', toggle);
   await listen<string>('jarvis-dev-action', (event) => handleDevelopmentAction(event.payload));
   await invoke('overlay_ready');
