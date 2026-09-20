@@ -42,6 +42,8 @@ struct Settings {
     repo_path: String,
     autostart_core: bool,
     start_bridge: bool,
+    /// Ask Core to synthesise spoken replies (needs the ElevenLabs key).
+    speak_replies: bool,
     /// Distinct >=32 character role tokens, generated once on first run.
     ui_token: String,
     platform_token: String,
@@ -60,6 +62,7 @@ impl Default for Settings {
             repo_path: String::new(),
             autostart_core: false,
             start_bridge: true,
+            speak_replies: true,
             ui_token: String::new(),
             platform_token: String::new(),
         }
@@ -156,6 +159,7 @@ fn save_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), String
 struct SocketConfig {
     url: String,
     token: String,
+    speak: bool,
 }
 
 #[tauri::command]
@@ -164,6 +168,7 @@ fn socket_config(app: tauri::AppHandle) -> SocketConfig {
     SocketConfig {
         url: format!("ws://127.0.0.1:{}/v1/ui", settings.core_port),
         token: settings.ui_token,
+        speak: settings.speak_replies,
     }
 }
 
@@ -394,7 +399,7 @@ pub fn run() {
             }
 
             let open = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
-            let toggle = MenuItem::with_id(app, "toggle", "Toggle overlay (Ctrl+Alt+J)", true, None::<&str>)?;
+            let toggle = MenuItem::with_id(app, "toggle", "Talk to Thursday (Ctrl+Alt+J)", true, None::<&str>)?;
             let start = MenuItem::with_id(app, "core_start", "Start Core", true, None::<&str>)?;
             let stop = MenuItem::with_id(app, "core_stop", "Stop Core", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;

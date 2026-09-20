@@ -120,10 +120,19 @@ export class CoreClient {
 
   /** Task IDs are never reused for the lifetime of a Core process. */
   request(text: string, speak = false) {
+    return this.start({ text, speak });
+  }
+
+  /** UserRequest carries exactly one of text or audio. Core runs the STT. */
+  requestAudio(audio: Record<string, unknown>, speak = true) {
+    return this.start({ audio, speak });
+  }
+
+  private start(payload: Record<string, unknown>) {
     if (this.busy) return false;
     const taskId = uid();
     this.taskId = taskId;
-    if (!this.send('user_request', { text, speak }, taskId)) {
+    if (!this.send('user_request', payload, taskId)) {
       this.taskId = null;
       return false;
     }

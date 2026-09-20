@@ -1,7 +1,7 @@
 import { listen } from '@tauri-apps/api/event';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { attachPointerLayer, playPointer, type OverlayMetrics } from './pointer';
-import { startCoreLink } from './core-link';
+import { startCoreLink, voiceActivate } from './core-link';
 
 const host = document.querySelector('#app')!;
 const canvas = document.createElement('canvas');
@@ -162,6 +162,11 @@ function setOverlayMode(mode: 'idle' | 'listening' | 'working' | 'speaking') {
   canvas.dataset.mode = mode;
 }
 
+/** Live microphone loudness, 0..1, so the overlay reacts while you speak. */
+function setLevel(level: number) {
+  canvas.style.setProperty('--level', level.toFixed(3));
+}
+
 function toggle(origin?: SummonOrigin) {
   if (active && !closing) dismiss();
   else summon(origin);
@@ -170,11 +175,13 @@ function toggle(origin?: SummonOrigin) {
 resize();
 addEventListener('resize', resize);
 if (isTauri()) {
-  await listen<SummonOrigin>('overlay-toggle', (event) => toggle(event.payload));
+  // The activation shortcut is push-to-talk: it starts listening, ends the
+  // recording early on a second press, and cancels a task in flight.
+  await listen<SummonOrigin>('overlay-toggle', (event) => void voiceActivate(event.payload));
   // overlay_ready shows the (transparent, click-through) overlay and returns the
   // monitor origin/scale needed to map Core's screen coordinates onto it.
   const metrics = await invoke<OverlayMetrics>('overlay_ready');
-  await startCoreLink(metrics, { summon, dismiss, setMode: setOverlayMode });
+  await startCoreLink(metrics, { summon, dismiss, setMode: setOverlayMode, setLevel });
 } else {
   // Browser-only preview; native operation uses the global shortcut.
   addEventListener('keydown', (event) => {

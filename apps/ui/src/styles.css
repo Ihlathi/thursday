@@ -22,6 +22,12 @@ canvas {
 /* Overlay presence = a session is live. The pulse rate says what it is doing:
    slow while listening, quicker while the model works, quickest while speaking. */
 .summon-layer.visible.settled[data-mode="working"] { animation-duration: 3.2s; }
+/* While listening the layer tracks microphone loudness instead of breathing. */
+.summon-layer.visible.settled[data-mode="listening"] {
+  animation: none;
+  opacity: calc(0.7 + var(--level, 0) * 0.3);
+  transition: opacity 90ms linear;
+}
 .summon-layer.visible.settled[data-mode="speaking"] { animation: breathe 1.6s ease-in-out infinite; }
 /* The pointer trail is independent of the summon overlay: it plays whenever the
    Core is about to move the mouse, whether or not the overlay is summoned. */

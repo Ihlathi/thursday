@@ -21,6 +21,8 @@
         <label>Gemini model<input id="gemini_model" type="text" spellcheck="false" /></label>
         <label>ElevenLabs API key<input id="elevenlabs_api_key" type="password" autocomplete="off" spellcheck="false" placeholder="optional" /></label>
         <label>ElevenLabs voice ID<input id="elevenlabs_voice_id" type="text" spellcheck="false" placeholder="optional" /></label>
+        <label class="check"><input id="speak_replies" type="checkbox" /> Speak replies aloud (needs the ElevenLabs key and voice ID)</label>
+        <p class="hint">Hold-free push to talk: <strong>Ctrl+Alt+J</strong> starts listening, a second press ends the recording early, and a third cancels a task in flight.</p>
         <p class="hint">Keys stay in this machine's app config folder and are passed to Core as environment variables only. They never cross the UI socket.</p>
       </section>
 

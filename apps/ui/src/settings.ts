@@ -14,6 +14,7 @@ interface Settings {
   repo_path: string;
   autostart_core: boolean;
   start_bridge: boolean;
+  speak_replies: boolean;
   ui_token: string;
   platform_token: string;
 }
@@ -42,6 +43,7 @@ async function load() {
   pick<HTMLInputElement>('core_port').value = String(loaded.core_port);
   pick<HTMLInputElement>('autostart_core').checked = loaded.autostart_core;
   pick<HTMLInputElement>('start_bridge').checked = loaded.start_bridge;
+  pick<HTMLInputElement>('speak_replies').checked = loaded.speak_replies;
   await refreshCore();
 }
 
@@ -52,6 +54,7 @@ function collect(): Settings {
   next.core_port = Number(pick<HTMLInputElement>('core_port').value) || 8765;
   next.autostart_core = pick<HTMLInputElement>('autostart_core').checked;
   next.start_bridge = pick<HTMLInputElement>('start_bridge').checked;
+  next.speak_replies = pick<HTMLInputElement>('speak_replies').checked;
   return next;
 }
 
