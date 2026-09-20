@@ -157,7 +157,14 @@ await listen<{ event: AgentEvent; taskId: string }>('agent-event', (message) => 
     // Render the exact action, consequence, risk and expiry Core sent.
     pick('confirm-action').textContent = event.confirmation.action;
     pick('confirm-consequence').textContent = event.confirmation.consequence;
-    pick('confirm-risk').textContent = event.confirmation.risk;
+    // Plain words here too: the panel is a fallback for the spoken prompt.
+    pick('confirm-risk').textContent = ({
+      DESTRUCTIVE: 'cannot be undone',
+      SECURITY_SENSITIVE: 'password or security',
+      CONSEQUENTIAL: 'worth checking first',
+      REVERSIBLE: 'easy to undo',
+      READ_ONLY: 'just looking',
+    } as Record<string, string>)[event.confirmation.risk] ?? event.confirmation.risk;
     pick('confirm-expiry').textContent = new Date(event.confirmation.expires_at * 1000).toLocaleTimeString();
     confirmBox.hidden = false;
   }

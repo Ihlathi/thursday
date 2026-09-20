@@ -239,8 +239,10 @@ class Engine:
                 return self.failure(tool,'escalation_order','Inspect a relevant region before full-screen capture.')
             revision=self.world.revision
             if decision.confirm:
-                # Ask out loud as well as on screen, for the same reason.
-                await self.say(f'{decision.reason} Should I go ahead?',emit)
+                # Ask out loud as well as on screen, in the words a person uses:
+                # "Hey, I want to use Delete, but that would delete this, and I
+                # don't think I can undo it. Is that okay?"
+                await self.say(f"Hey, I want to {decision.action or 'do this'}, but {decision.reason}. Is that okay?",emit)
                 if not await self.confirmations.request(task_id,tool,decision,emit):
                     return self.failure(tool,'confirmation_denied','Denied or expired; do not attempt an alternative action.')
                 # Refresh after human delay; never reuse approval against a changed target.

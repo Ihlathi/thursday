@@ -27,6 +27,34 @@ class Decision:
     confirm: bool
     reason: str
     blocked: bool = False
+    action: str = ''
+
+def describe(tool, world):
+    """What the action is, in the words the person would use.
+
+    This is what gets read aloud, so it never contains tool names, element IDs,
+    coordinates or risk labels -- only the name on the button and the name of
+    the app. The confirmation hash is computed over the real ToolCall, not over
+    this sentence, so plain wording costs nothing in precision.
+    """
+    name,args=tool['name'],tool['arguments']
+    label=lambda: (world.elements.get(args.get('id'),{}) or {}).get('name') or 'that button'
+    if name=='invoke_ui': return f'use {label()}'
+    if name=='set_ui_value': return f'fill in {label()}'
+    if name=='click': return 'click that spot on the screen'
+    if name=='type_text': return 'type that in for you'
+    if name=='press_key': return f"press {args.get('key')}"
+    if name=='open_app': return f"open {args.get('name')}"
+    if name=='open_url':
+        url=str(args.get('url',''))
+        site=url.split('//')[-1].split('/')[0] or 'that page'
+        return f'open {site}'
+    if name in ('open_file','open_folder'): return 'open that for you'
+    if name=='scroll': return 'scroll the page'
+    if name in ('inspect_screen','inspect_region'): return 'look at your screen'
+    if name=='set_setting': return f"change the {args.get('setting')}"
+    if name=='propose_command': return 'run a command on your computer'
+    return name.replace('_',' ')
 
 REVERSIBLE_APPS=('calculator','notepad','settings','browser','explorer','files')
 TRUSTED_SOURCES=('api','accessibility','mock')
@@ -62,9 +90,9 @@ class Policy:
                 return Decision('CONSEQUENTIAL',False,'That control is missing, hidden, or disabled.',True)
             trusted=e['source'] in TRUSTED_SOURCES
             if e['sensitive'] or e['action_kind']=='security':
-                risk,reason='SECURITY_SENSITIVE','This is a password or security control.'
+                risk,reason='SECURITY_SENSITIVE',f"that's a password or security setting, so I'd rather you say it's alright first"
             elif e['action_kind']=='delete':
-                risk,reason='DESTRUCTIVE',f"This deletes {e['name'] or 'the selected item'}."
+                risk,reason='DESTRUCTIVE',"that one deletes it for good, and I don't think I can undo it"
             elif name=='invoke_ui' and e['action_kind']=='navigation' and trusted:
                 risk='REVERSIBLE'
             elif relaxed and trusted:
@@ -75,7 +103,7 @@ class Policy:
                 risk='CONSEQUENTIAL'
         if name=='press_key':
             if normalise_key(args['key']) in GUARDED_KEYS:
-                risk,reason='CONSEQUENTIAL',f"{args['key']} closes or locks what you are working in."
+                risk,reason='CONSEQUENTIAL',"that closes or locks whatever you're working in"
             elif relaxed:
                 risk='REVERSIBLE'
         if relaxed and name in ('click','move_mouse','scroll','type_text','open_url','open_file','open_folder'):
@@ -90,9 +118,10 @@ class Policy:
             if type(v) in (int,float) and 0<=v<=100:
                 risk='REVERSIBLE'
         if reason is None:
-            reason=('Screen content will be sent to the model.' if name in ('inspect_region','inspect_screen')
-                    else f'{risk.lower().replace("_"," ")} action')
-        return Decision(risk,risk not in ('READ_ONLY','REVERSIBLE'),reason)
+            reason=("I'd have to send a picture of it away to be read"
+                    if name in ('inspect_region','inspect_screen')
+                    else "I'm not certain this one can be undone")
+        return Decision(risk,risk not in ('READ_ONLY','REVERSIBLE'),reason,action=describe(tool,world))
 
 class Confirmations:
     def __init__(self, timeout=60):
@@ -101,8 +130,10 @@ class Confirmations:
     async def request(self, task_id, tool, decision, emit):
         digest=hashlib.sha256(json.dumps(tool,sort_keys=True,separators=(',',':')).encode()).hexdigest()
         cid=uid()
+        # The hash above binds the real ToolCall; these two strings are what the
+        # person hears and reads, so they are written for them, not for a log.
         payload={'confirmation_id':cid,'call_id':tool['call_id'],'action_hash':digest,
-                 'action':tool['name']+': '+json.dumps(tool['arguments'],ensure_ascii=False),
+                 'action':(decision.action or tool['name'].replace('_',' ')).capitalize(),
                  'consequence':decision.reason,'risk':decision.risk,'expires_at':time.time()+self.timeout}
         future=asyncio.get_running_loop().create_future()
         self.pending[cid]=(task_id,payload,future)
