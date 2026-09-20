@@ -21,18 +21,13 @@ canvas.visible {
   transition: opacity 60ms ease-out, filter 300ms ease;
 }
 canvas.visible.settled {
-  animation:
-    settle 900ms cubic-bezier(0.22, 1, 0.36, 1) both,
-    breathe 8s ease-in-out 900ms infinite;
+  animation: settle var(--settle-duration, 900ms) cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes settle {
   from { opacity: 1; filter: brightness(1.12); }
   to { opacity: 0.97; filter: brightness(1); }
 }
-@keyframes breathe {
-  0%, 100% { opacity: 0.97; filter: brightness(1); }
-  50% { opacity: 0.91; filter: brightness(1.06) saturate(1.03); }
-}
 @media (prefers-reduced-motion: reduce) {
   canvas.visible.settled { animation: none; }
 }
+canvas.reduced-motion.visible.settled { animation: none; }
