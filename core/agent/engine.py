@@ -116,6 +116,12 @@ class Engine:
             await emit('cancelled',message='Task cancelled. An action already dispatched may have completed.')
             raise
         except Exception as exc:
+            provider_error=getattr(exc,'response_json',None)
+            if isinstance(provider_error,dict):
+                detail=provider_error.get('error',{})
+                await emit('debug',metadata={'kind':'provider_error','error_type':type(exc).__name__,
+                    'status_code':getattr(exc,'status_code',None),'provider_status':detail.get('status'),
+                    'provider_message':str(detail.get('message',''))[:500]})
             message=str(exc) if isinstance(exc,ConfigurationError) else 'Task failed: '+type(exc).__name__+'. Check provider configuration or bridge availability.'
             await emit('error',error={'code':'configuration_error' if isinstance(exc,ConfigurationError) else 'task_failed','message':message,'retryable':True})
         finally:
