@@ -256,6 +256,25 @@ class WindowsBridge:
             self.adapters.rawinput.glide_to(x, y)
             control, entry, fresh = self._resolve_live(element_id)
 
+            # Re-read the centre from the freshly resolved control and click
+            # there for real, so the cursor the user is watching is the thing
+            # that operates the control. A control the mouse cannot drive (an
+            # offscreen or zero-size element, a click the backend refuses)
+            # falls back to the UIA pattern rather than failing the task.
+            self.session.validate_revision(expected_revision)
+            self._guard_cancelled(task_id)
+            try:
+                x, y = self.adapters.uia.center_of(control)
+                self._check_bounds(x, y)
+                self.adapters.rawinput.click(x, y)
+                pattern = "mouse"
+            except Exception:  # noqa: BLE001 - presentation must not break the action
+                pattern = self.adapters.uia.invoke(control)
+            return {
+                "data": {"invoked": element_id, "pattern": pattern, "mode": mode},
+                "delta": self._after_mutation("invoke_ui"),
+            }
+
         self.session.validate_revision(expected_revision)
         self._guard_cancelled(task_id)
         pattern = self.adapters.uia.invoke(control)

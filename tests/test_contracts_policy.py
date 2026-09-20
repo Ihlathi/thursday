@@ -20,7 +20,32 @@ def test_shared_contracts_are_valid_and_strict():
 def world(kind='navigation'):
     w=World(); w.update({'revision':1,'elements':[element(kind=kind)],'full':True}); return w
 
-def test_policy_uses_authoritative_action_context():
+@pytest.fixture
+def strict(monkeypatch):
+    monkeypatch.setenv('AGENT_POLICY_MODE','strict')
+
+@pytest.fixture
+def assistive(monkeypatch):
+    monkeypatch.delenv('AGENT_POLICY_MODE',raising=False)
+
+def test_assistive_posture_confirms_only_what_cannot_be_undone(assistive):
+    p=Policy()
+    # Ordinary operation of trusted, visible controls proceeds without prompting.
+    assert not p.classify(call('invoke_ui',id='orders',mode='visible'),world()).confirm
+    assert not p.classify(call('invoke_ui',id='orders',mode='visible'),world('submit')).confirm
+    assert not p.classify(call('click',x=0,y=0),world()).confirm
+    assert not p.classify(call('type_text',text='hello'),world()).confirm
+    assert not p.classify(call('press_key',key='ENTER'),world()).confirm
+    # What a person cannot easily undo still stops for consent.
+    assert p.classify(call('invoke_ui',id='orders',mode='visible'),world('delete')).confirm
+    assert p.classify(call('invoke_ui',id='orders',mode='visible'),world('security')).confirm
+    assert p.classify(call('press_key',key='alt+F4'),world()).confirm
+    assert p.classify(call('set_setting',setting='firewall',value=False),world()).confirm
+    assert p.classify(call('propose_command',command='rm -rf /',reason='x'),world()).confirm
+    # Unknown targets are still refused outright, in either posture.
+    assert p.classify(call('invoke_ui',id='unknown',mode='visible'),world()).blocked
+
+def test_policy_uses_authoritative_action_context(strict):
     p=Policy()
     assert not p.classify(call('invoke_ui',id='orders',mode='direct'),world()).confirm
     assert p.classify(call('invoke_ui',id='orders',mode='direct'),world('submit')).confirm

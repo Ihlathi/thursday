@@ -59,6 +59,9 @@ class Engine:
         sent_images=[]
         try:
             validate_def('UserRequest',request)
+            # Spoken sessions get spoken prompts: a question the user cannot see
+            # is the same as no question at all.
+            self.speak=bool(request.get('speak'))
             if 'audio' in request:
                 await emit('listening',message='Transcribing with ElevenLabs')
                 text=await asyncio.wait_for(self.voice.transcribe(request['audio']),self.timeout)
@@ -137,8 +140,21 @@ class Engine:
                 await emit('speaking',audio=audio)
             except asyncio.CancelledError: raise
             except Exception as exc:
-                await emit('debug',metadata={'kind':'voice_unavailable','error_type':type(exc).__name__})
+                # The HTTP status is the only way to tell a bad voice ID from a
+                # key without TTS permission. No body, no headers, no key.
+                detail={'kind':'voice_unavailable','error_type':type(exc).__name__}
+                status=getattr(getattr(exc,'response',None),'status_code',None)
+                if status: detail['status']=status
+                await emit('debug',metadata=detail)
         await emit('completed',message=message[:4096])
+    async def say(self,text,emit):
+        """Speak a prompt aloud mid-task. Best effort; a voice failure never blocks."""
+        if not getattr(self,'speak',False): return
+        try:
+            audio=await asyncio.wait_for(self.voice.speak(text[:600]),self.timeout)
+            await emit('speaking',audio=audio)
+        except asyncio.CancelledError: raise
+        except Exception: pass
     def pointer_target(self,name,args):
         """Screen point a platform action will drive the mouse to, when there is one."""
         if name in ('move_mouse','click'):
@@ -160,6 +176,12 @@ class Engine:
             if name in ('invoke_ui','set_ui_value','click','type_text','press_key'):
                 fresh=await self.adapter(task_id,call('get_ui_state'))
                 if not fresh['ok']: return self.failure(tool,'observation_failed','Cannot verify target')
+            if name=='invoke_ui':
+                # Always operate controls the visible way: the bridge glides the
+                # pointer to the element, re-resolves the same semantic target,
+                # then activates it. The overlay animation and the real cursor
+                # then describe the same action.
+                args['mode']='visible'
             if name in ('invoke_ui','set_ui_value','click','type_text','press_key'):
                 tool['expected_revision']=self.world.revision
             decision=self.policy.classify(tool,self.world)
@@ -171,6 +193,8 @@ class Engine:
                 return self.failure(tool,'escalation_order','Inspect a relevant region before full-screen capture.')
             revision=self.world.revision
             if decision.confirm:
+                # Ask out loud as well as on screen, for the same reason.
+                await self.say(f'{decision.reason} Should I go ahead?',emit)
                 if not await self.confirmations.request(task_id,tool,decision,emit):
                     return self.failure(tool,'confirmation_denied','Denied or expired; do not attempt an alternative action.')
                 # Refresh after human delay; never reuse approval against a changed target.
@@ -191,6 +215,7 @@ class Engine:
             elif name=='ask_user':
                 rid=uid(); f=asyncio.get_running_loop().create_future(); self.replies[(task_id,rid)]=f
                 try:
+                    await self.say(args['message'],emit)
                     await emit('awaiting_input',message=args['message'],metadata={'reply_to':rid})
                     answer=await asyncio.wait_for(f,120)
                     result={'call_id':tool['call_id'],'ok':True,'data':{'answer':answer}}
