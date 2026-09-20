@@ -11,6 +11,7 @@ dependencies = ["websockets>=14,<16", "jsonschema>=4.23,<5", "httpx>=0.28,<1", "
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "pytest-asyncio>=0.24,<2"]
+windows = ["uiautomation>=2.0.20", "comtypes>=1.2,<2", "WMI>=1.5.1", "pycaw>=20240210", "mss>=9.0.1", "Pillow>=10.2"]
 
 [project.scripts]
 access-agent = "agent.cli:main"
