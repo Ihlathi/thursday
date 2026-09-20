@@ -45,14 +45,16 @@ class GeminiModel:
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True))
     async def next(self, context, feedback):
         t=self.types
-        parts=[t.Part.from_text(text=json.dumps(context,ensure_ascii=False))]
+        tool_parts=[]
         for tool,result in feedback:
             clean={k:v for k,v in result.items() if k!='image'}
-            parts.append(t.Part(function_response=t.FunctionResponse(name=tool['name'],response=clean,id=self.call_ids.get(tool['call_id']))))
+            tool_parts.append(t.Part(function_response=t.FunctionResponse(name=tool['name'],response=clean,id=self.call_ids.get(tool['call_id']))))
             if result.get('image'):
                 img=result['image']
-                parts.append(t.Part.from_bytes(data=base64.b64decode(img['data'],validate=True),mime_type=img['mime_type']))
-        self.history.append(t.Content(role='user',parts=parts))
+                tool_parts.append(t.Part.from_bytes(data=base64.b64decode(img['data'],validate=True),mime_type=img['mime_type']))
+        if tool_parts:
+            self.history.append(t.Content(role='tool',parts=tool_parts))
+        self.history.append(t.Content(role='user',parts=[t.Part.from_text(text=json.dumps(context,ensure_ascii=False))]))
         response=await self.client.aio.models.generate_content(model=self.model,contents=self.history,config=self.config)
         if not response.candidates or not response.candidates[0].content:
             raise RuntimeError('Model returned no usable content')
