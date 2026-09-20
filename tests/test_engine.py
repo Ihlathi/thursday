@@ -63,12 +63,16 @@ async def test_vision_escalation_and_image_feedback(tmp_path):
 
 async def test_missing_key_is_clear(tmp_path,monkeypatch):
     from agent.providers import GeminiModel
+    import agent.providers as providers
     monkeypatch.delenv('GEMINI_API_KEY',raising=False)
+    monkeypatch.setattr(providers,'ACTIVE',None)
     e=make(tmp_path); e.model_factory=GeminiModel; events=[]
     async def emit(status,**f): events.append((status,f))
     await e.run('task',{'text':'hello'},emit)
     assert events[-1][1]['error']['code']=='configuration_error'
-    assert 'GEMINI_API_KEY' in events[-1][1]['error']['message']
+    # The message must tell the person where to put the key, not just that it is missing.
+    message=events[-1][1]['error']['message']
+    assert 'Gemini API key' in message and 'Settings' in message
     e.memory.close()
 
 async def test_slow_provider_cancelled(tmp_path):

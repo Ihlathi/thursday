@@ -21,9 +21,58 @@
             <span id="connection-dot" class="connection__dot"></span>
             <span id="connection-label">Connecting</span>
           </div>
+          <button id="settings-button" class="icon-button" type="button" aria-label="Open settings" title="Settings">&#9881;</button>
           <button id="close-button" class="icon-button" type="button" aria-label="Close assistant">&times;</button>
         </header>
 
+        <section id="settings" class="settings" aria-labelledby="settings-title" hidden>
+          <button id="settings-back" class="text-button" type="button">&#8249; Back to assistant</button>
+          <h2 id="settings-title">Settings</h2>
+          <p class="settings__lead" role="status" aria-live="polite" id="settings-status">
+            Keys are stored by Core only. This window never receives them back.
+          </p>
+
+          <form id="settings-form" class="settings__form">
+            <fieldset class="settings__group">
+              <legend>Gemini &mdash; reasoning</legend>
+              <label for="gemini-key">API key</label>
+              <input id="gemini-key" type="password" autocomplete="off" spellcheck="false"
+                     placeholder="Paste a Gemini API key" maxlength="512"
+                     aria-describedby="gemini-key-state" />
+              <p id="gemini-key-state" class="settings__state">Not set</p>
+
+              <label for="gemini-model">Model</label>
+              <input id="gemini-model" type="text" autocomplete="off" spellcheck="false"
+                     placeholder="gemini-3.8-flash" maxlength="120" />
+
+              <fieldset class="settings__modes">
+                <legend>Provider mode</legend>
+                <label class="toggle"><input type="radio" name="model-mode" value="gemini" /> Live Gemini</label>
+                <label class="toggle"><input type="radio" name="model-mode" value="mock" /> Mock &mdash; offline, no cloud calls</label>
+              </fieldset>
+            </fieldset>
+
+            <fieldset class="settings__group">
+              <legend>ElevenLabs &mdash; voice (optional)</legend>
+              <label for="eleven-key">API key</label>
+              <input id="eleven-key" type="password" autocomplete="off" spellcheck="false"
+                     placeholder="Paste an ElevenLabs API key" maxlength="512"
+                     aria-describedby="eleven-key-state" />
+              <p id="eleven-key-state" class="settings__state">Not set &mdash; typed requests still work</p>
+
+              <label for="eleven-voice">Voice ID</label>
+              <input id="eleven-voice" type="text" autocomplete="off" spellcheck="false"
+                     placeholder="Voice ID for spoken replies" maxlength="120" />
+            </fieldset>
+
+            <div class="button-row">
+              <button id="settings-clear" class="button button--secondary" type="button">Clear all</button>
+              <button id="settings-save" class="button button--primary" type="submit">Save to Core</button>
+            </div>
+          </form>
+        </section>
+
+        <div id="assistant-view" class="assistant__body">
         <section class="status-card" aria-labelledby="status-heading">
           <div id="status-orb" class="status-orb" aria-hidden="true"></div>
           <div>
@@ -67,6 +116,7 @@
           <button id="retry-button" class="button button--secondary" type="button">Reconnect</button>
         </div>
         <p class="privacy-note">Voice and approved screenshots may be sent to configured cloud providers. Credentials stay in Core.</p>
+        </div>
       </main>
     </div>
   </body>

@@ -1,13 +1,30 @@
 """Mockable cloud boundaries. No platform or UI process receives credentials."""
+import asyncio
 import base64
 import json
 import os
+import random
 from dataclasses import dataclass, field
 import httpx
 from .contracts import TOOLS, call
+from .settings import FIELDS
 
 class ConfigurationError(Exception):
     pass
+
+ACTIVE=None
+
+def configure(settings):
+    """Core installs its settings store here; providers never read files."""
+    global ACTIVE
+    ACTIVE=settings
+
+def setting(name,default=''):
+    """Stored setting first, then the environment Core was started with."""
+    if ACTIVE is not None:
+        value=ACTIVE.value(name)
+        if value: return value
+    return os.getenv(FIELDS[name][0],default)
 
 @dataclass
 class Turn:
@@ -31,13 +48,14 @@ class GeminiModel:
         from google import genai
         from google.genai import types
         self.types=types
-        key=os.getenv('GEMINI_API_KEY')
+        key=setting('gemini_api_key')
         if client is None and not key:
-            raise ConfigurationError('Set GEMINI_API_KEY for live Gemini, or use --mode mock explicitly.')
+            raise ConfigurationError('Add a Gemini API key in Settings (tray icon), or switch to mock mode.')
         self.client=client or genai.Client(api_key=key)
-        self.model=model or os.getenv('GEMINI_MODEL','gemini-3.8-flash')
+        self.model=model or setting('gemini_model','gemini-3.8-flash') or 'gemini-3.8-flash'
         self.history=[]
         self.call_ids={}
+        self.retries=0
         self.config=types.GenerateContentConfig(
             system_instruction=SYSTEM,
             tools=[types.Tool(function_declarations=[types.FunctionDeclaration(
@@ -60,7 +78,7 @@ class GeminiModel:
             self.history.append(t.Content(role='user',parts=tool_parts))
         else:
             self.history.append(t.Content(role='user',parts=[t.Part.from_text(text=json.dumps(context,ensure_ascii=False))]))
-        response=await self.client.aio.models.generate_content(model=self.model,contents=self.history,config=self.config)
+        response=await self.generate()
         if not response.candidates or not response.candidates[0].content:
             raise RuntimeError('Model returned no usable content')
         content=response.candidates[0].content
@@ -75,6 +93,26 @@ class GeminiModel:
                 calls.append(proposed)
         text=''.join(p.text for p in content.parts or [] if p.text and not p.thought)
         return Turn(calls,text,content)
+    async def generate(self,attempts=4,delay=0.8):
+        """Retry the transient provider failures (429 rate limit, 5xx overload).
+
+        A live demo should not die because the model was momentarily busy.
+        Anything else -- a bad key, a bad request -- is raised immediately.
+        """
+        for attempt in range(attempts):
+            try:
+                return await self.client.aio.models.generate_content(
+                    model=self.model,contents=self.history,config=self.config)
+            except Exception as exc:
+                status=getattr(exc,'code',None) or getattr(exc,'status_code',None)
+                transient=status in (408,429,500,502,503,504)
+                if not transient or attempt==attempts-1:
+                    raise
+                self.retries+=1
+                if delay:
+                    await asyncio.sleep(delay+random.uniform(0,delay*0.35))
+                delay*=2
+
     async def close(self):
         await self.client.aio.aclose()
 
@@ -98,28 +136,28 @@ class ElevenLabsVoice:
     def __init__(self, client=None):
         self.client=client
     def key(self):
-        key=os.getenv('ELEVENLABS_API_KEY')
-        if not key: raise ConfigurationError('Voice requires ELEVENLABS_API_KEY; typed requests still work.')
+        key=setting('elevenlabs_api_key')
+        if not key: raise ConfigurationError('Voice needs an ElevenLabs API key in Settings; typed requests still work.')
         return key
     async def transcribe(self,audio):
         data=base64.b64decode(audio['data'],validate=True)
         if len(data)>2_000_000: raise ValueError('Audio exceeds 2 MB')
         async with httpx.AsyncClient(timeout=45,transport=self.client) as client:
             response=await client.post('https://api.elevenlabs.io/v1/speech-to-text',headers={'xi-api-key':self.key()},
-                data={'model_id':os.getenv('ELEVENLABS_STT_MODEL','scribe_v2'),'tag_audio_events':'false'},
+                data={'model_id':setting('elevenlabs_stt_model','scribe_v2') or 'scribe_v2','tag_audio_events':'false'},
                 files={'file':('recording',data,audio['mime_type'])})
             response.raise_for_status()
             return response.json()['text']
     async def speak(self,text):
         key=self.key()
-        voice=os.getenv('ELEVENLABS_VOICE_ID')
-        if not voice: raise ConfigurationError('TTS requires ELEVENLABS_VOICE_ID; text response is available.')
+        voice=setting('elevenlabs_voice_id')
+        if not voice: raise ConfigurationError('Spoken replies need an ElevenLabs voice ID in Settings; the written answer is above.')
         # Voice IDs are path segments, never arbitrary URLs.
         from urllib.parse import quote
         async with httpx.AsyncClient(timeout=45,transport=self.client) as client:
             response=await client.post('https://api.elevenlabs.io/v1/text-to-speech/'+quote(voice,safe=''),
                 params={'output_format':'mp3_44100_128'},headers={'xi-api-key':key},
-                json={'text':text[:4000],'model_id':os.getenv('ELEVENLABS_TTS_MODEL','eleven_multilingual_v2')})
+                json={'text':text[:4000],'model_id':setting('elevenlabs_tts_model','eleven_multilingual_v2') or 'eleven_multilingual_v2'})
             response.raise_for_status()
             if len(response.content)>2_000_000: raise ValueError('Speech response exceeds 2 MB')
             return {'encoding':'base64','mime_type':'audio/mpeg','data':base64.b64encode(response.content).decode()}

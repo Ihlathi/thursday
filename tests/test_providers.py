@@ -38,3 +38,64 @@ async def test_voice_http_contracts(monkeypatch):
     assert await voice.transcribe({'mime_type':'audio/wav','encoding':'base64','data':base64.b64encode(b'test').decode()})=='hello'
     assert base64.b64decode((await voice.speak('hello'))['data'])==b'audio'
     assert len(requests)==2
+
+
+async def test_transient_provider_failures_are_retried():
+    """A 503 mid-demo should cost a second, not the task."""
+    from agent.providers import GeminiModel
+
+    class Overloaded(Exception):
+        def __init__(self):
+            super().__init__('busy')
+            self.code = 503
+
+    class FlakyModels:
+        def __init__(self):
+            self.calls = 0
+
+        async def generate_content(self, **kwargs):
+            self.calls += 1
+            if self.calls < 3:
+                raise Overloaded()
+            return 'ok'
+
+    class Client:
+        def __init__(self):
+            self.aio = type('Aio', (), {'models': FlakyModels()})()
+
+    client = Client()
+    model = GeminiModel(client=client, model='test-model')
+    assert await model.generate(delay=0) == 'ok'  # delay=0 skips the backoff sleep
+    assert client.aio.models.calls == 3
+    assert model.retries == 2
+
+
+async def test_permanent_provider_failures_are_not_retried():
+    from agent.providers import GeminiModel
+
+    class Rejected(Exception):
+        def __init__(self):
+            super().__init__('bad key')
+            self.code = 401
+
+    class Models:
+        def __init__(self):
+            self.calls = 0
+
+        async def generate_content(self, **kwargs):
+            self.calls += 1
+            raise Rejected()
+
+    class Client:
+        def __init__(self):
+            self.aio = type('Aio', (), {'models': Models()})()
+
+    client = Client()
+    model = GeminiModel(client=client, model='test-model')
+    try:
+        await model.generate()
+    except Rejected:
+        pass
+    else:
+        raise AssertionError('a rejected key must surface immediately')
+    assert client.aio.models.calls == 1

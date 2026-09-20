@@ -77,3 +77,23 @@ complete_task, propose_command. All others in tools.json belong to the platform.
 Core search_ui hides retrieval and may ask the platform for a UI snapshot. Core
 refreshes targets before invocation and after mutations. Unsupported bridge tools
 return unsupported_tool, not fake success. `mocks/platform.py` is explicitly fake.
+
+## Settings (UI ↔ Core)
+
+Provider credentials belong to Core. The UI may ask what is configured and may
+hand Core a new value, but never receives a stored secret back.
+
+* `settings_get` — payload `{}`. Core answers with `settings_state`.
+* `settings_update` — a partial update. A present, non-empty string sets a
+  field; an empty string clears it back to whatever Core's environment provides;
+  an absent field is left alone, so a blank key box never erases a stored key.
+  `model_mode` is `mock` or `gemini`. `clear_all: true` forgets everything.
+* `settings_state` — Core's answer to both. Secrets appear only as
+  `<name>_set` and `<name>_from_environment` booleans; non-secret fields
+  (model name, voice ID) carry their value. `model_mode` is what Core will
+  actually use — it reports `mock` whenever `gemini` is requested without a key
+  available — while `requested_mode` is what was chosen. `saved` is true when
+  the message answers an update.
+
+None of these carry a `task_id`. Values are capped at 512 characters and an
+oversized or malformed update is answered with `error/settings_rejected`.

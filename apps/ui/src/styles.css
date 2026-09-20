@@ -65,7 +65,7 @@ canvas.visible.settled { animation: breathe 8s ease-in-out infinite; }
 
 .assistant__header {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   align-items: center;
   gap: 14px;
 }
@@ -283,3 +283,65 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   .assistant, .status-card, .confirmation { background: Canvas; border: 2px solid CanvasText; color: CanvasText; }
   .status-orb, .connection__dot { background: Highlight; }
 }
+
+/* Settings pane, reached from the tray icon. Same overlay surface as the
+   assistant, so nothing new has to be positioned, focused or animated. */
+.assistant__body { display: flex; flex-direction: column; gap: 16px; min-height: 0; overflow: auto; }
+.assistant__body[hidden], .settings[hidden] { display: none; }
+
+.settings { display: flex; flex-direction: column; align-items: stretch; gap: 13px; min-height: 0; overflow: auto; }
+.settings > .text-button { align-self: flex-start; padding-left: 0; }
+.settings__lead { color: #8fb4c8; font-size: 0.78rem; line-height: 1.45; }
+.settings__form { display: flex; flex-direction: column; gap: 15px; }
+
+.settings__group {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 14px 15px 15px;
+  border: 1px solid rgba(146, 205, 240, 0.22);
+  border-radius: 15px;
+  background: rgba(10, 30, 45, 0.45);
+}
+
+.settings__group > legend,
+.settings__modes > legend {
+  padding: 0 6px;
+  color: #8fcff2;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.settings__group > label { color: #dceef8; font-size: 0.83rem; font-weight: 620; }
+
+.settings input[type="text"],
+.settings input[type="password"] {
+  width: 100%;
+  padding: 10px 12px;
+  color: #eaf7ff;
+  font: inherit;
+  font-size: 0.88rem;
+  background: rgba(4, 16, 26, 0.8);
+  border: 1px solid rgba(150, 210, 245, 0.32);
+  border-radius: 11px;
+}
+
+.settings input:focus-visible { outline: 2px solid #8ad6ff; outline-offset: 1px; }
+
+.settings__state { margin-bottom: 7px; color: #93b6c9; font-size: 0.74rem; }
+.settings__state[data-set="true"] { color: #9cf0c7; }
+.settings__state[data-set="false"] { color: #f0c98c; }
+
+.settings__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 4px 0 0;
+  padding: 10px 12px 12px;
+  border: 1px dashed rgba(146, 205, 240, 0.28);
+  border-radius: 12px;
+}
+
+.settings__modes .toggle input { width: 15px; height: 15px; }

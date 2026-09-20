@@ -5,6 +5,27 @@ intent. It includes a Python Core, a Tauri 2 accessibility overlay and a Windows
 UI Automation bridge. macOS is future work. Prefer direct APIs and accessibility
 over screenshot/mouse control.
 
+## Quick start on Windows — one command
+
+```
+START-JARVIS.bat
+```
+
+First run creates the Python environment and installs the UI dependencies; after
+that it starts Core, the Windows bridge and the overlay together. A tray icon
+appears when JARVIS is ready.
+
+* **Ctrl+Alt+J** summons the overlay; **Esc** dismisses it.
+* **Right-click the tray icon → Settings…** (or the gear in the overlay) opens
+  the settings pane. Paste a Gemini API key there and JARVIS switches from mock
+  to live reasoning without a restart; an ElevenLabs key and voice ID add voice.
+* `START-JARVIS.bat mock` runs the safe demo: no real OS action, no cloud call.
+
+Keys typed into the settings pane are sent to Core over the authenticated
+loopback socket and stored in `.agent-data/settings.json`. The UI process is
+started without provider credentials and is only ever told *whether* a key is
+set, never its value. `Clear all` removes them again.
+
 ## Quick start — offline, no API keys
 
 Python 3.11+; commands run from repository root:
@@ -61,16 +82,20 @@ Core: `ws://127.0.0.1:8765/v1/ui` and `/v1/platform`. The UI harness prints even
 `--interactive` enables deliberate yes/no confirmations. Configure `.env.example`
 values in your launcher/shell; Core does not auto-load .env files.
 
-For live reasoning, set GEMINI_API_KEY only in Core and use `--mode gemini`.
-The verified default is `gemini-3.8-flash`, configurable via GEMINI_MODEL. Optional
-ElevenLabs STT/TTS needs its key and voice ID. No live provider claim is made by the
-offline tests. See [provider setup](docs/providers.md).
+For live reasoning, add a Gemini key in the settings pane, or set GEMINI_API_KEY
+in Core's environment. The verified default is `gemini-3.8-flash`, configurable in
+the same pane or via GEMINI_MODEL. Stored settings win over the environment; an
+empty box falls back to it. `run.py serve --mode gemini|mock` pins the provider for
+that run and ignores the saved choice. Transient provider failures (429, 5xx) are
+retried with backoff so a busy model does not end a task. Optional ElevenLabs
+STT/TTS needs its key and voice ID. No live provider claim is made by the offline
+tests. See [provider setup](docs/providers.md).
 
 ## Layout and handoffs
 
 | Directory | Responsibility |
 |---|---|
-| `core/agent/` | Model loop, policy, context, memory, providers and transport |
+| `core/agent/` | Model loop, policy, context, memory, settings, providers and transport |
 | `shared/` | Canonical protocol schemas and tool catalog |
 | `apps/ui/` | Tauri 2 accessible overlay and authenticated Core client |
 | `platform/windows/` | Windows UIA/direct-API bridge and safety guards |

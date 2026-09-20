@@ -66,3 +66,14 @@ async def test_confirmation_timeout_fails_closed():
     tool=call('click',x=1,y=2)
     assert not await c.request('task',tool,Policy().classify(tool,world()),emit)
     assert not c.pending
+
+
+def test_every_tool_is_described_for_the_model():
+    """Tool descriptions are the model's only documentation; placeholders cost accuracy."""
+    from agent.contracts import TOOLS
+
+    for name, tool in TOOLS.items():
+        description = tool['description']
+        assert len(description) > 40, f'{name} has a placeholder description'
+        assert description != name.replace('_', ' '), f'{name} only restates its own name'
+        assert description[0].isupper() and description.rstrip().endswith('.'), name

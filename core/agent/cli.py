@@ -27,9 +27,15 @@ async def demo(args):
         finally: memory.close()
 
 async def server(args):
-    app=CoreServer(os.getenv('AGENT_UI_TOKEN',''),os.getenv('AGENT_PLATFORM_TOKEN',''),model_factory(args.mode),os.getenv('AGENT_DATA_DIR','.agent-data'))
+    # No --mode: the provider follows Settings, so a key saved from the tray
+    # takes effect without a restart. An explicit --mode pins it for the run.
+    forced=model_factory(args.mode) if args.mode else None
+    # AGENT_MODEL_MODE only seeds the default; Settings can still switch at runtime.
+    app=CoreServer(os.getenv('AGENT_UI_TOKEN',''),os.getenv('AGENT_PLATFORM_TOKEN',''),forced,
+                   os.getenv('AGENT_DATA_DIR','.agent-data'),
+                   mode=args.mode or os.getenv('AGENT_MODEL_MODE') or 'gemini')
     port=await app.start(args.port)
-    print(f'Core ready at ws://127.0.0.1:{port}/v1/ui; provider={args.mode}',flush=True)
+    print(f'Core ready at ws://127.0.0.1:{port}/v1/ui; provider={args.mode or app.settings.model_mode+" (from settings)"}',flush=True)
     try: await asyncio.Future()
     finally: await app.close()
 
@@ -41,7 +47,8 @@ def main():
     d.add_argument('--mode',choices=['mock','gemini'],default=os.getenv('AGENT_MODEL_MODE','mock'))
     s=commands.add_parser('serve')
     s.add_argument('--port',type=int,default=8765)
-    s.add_argument('--mode',choices=['mock','gemini'],default=os.getenv('AGENT_MODEL_MODE','gemini'))
+    s.add_argument('--mode',choices=['mock','gemini'],default=None,
+                   help='Pin the provider for this run; omit to follow saved settings')
     args=parser.parse_args()
     try: asyncio.run(demo(args) if args.command=='demo' else server(args))
     except KeyboardInterrupt: pass

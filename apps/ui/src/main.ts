@@ -24,8 +24,21 @@ interface Confirmation {
 
 interface SummonEvent {
   active: boolean;
+  view?: 'assistant' | 'settings';
   x: number;
   y: number;
+}
+
+interface SettingsState {
+  model_mode: 'mock' | 'gemini';
+  requested_mode: 'mock' | 'gemini';
+  gemini_api_key_set?: boolean;
+  gemini_api_key_from_environment?: boolean;
+  elevenlabs_api_key_set?: boolean;
+  elevenlabs_api_key_from_environment?: boolean;
+  gemini_model?: string;
+  elevenlabs_voice_id?: string;
+  saved?: boolean;
 }
 
 interface CoreConfig {
@@ -52,6 +65,17 @@ const cancelButton = byId<HTMLButtonElement>('cancel-button');
 const confirmationPanel = byId<HTMLElement>('confirmation');
 const approveButton = byId<HTMLButtonElement>('approve-button');
 const denyButton = byId<HTMLButtonElement>('deny-button');
+const assistantView = byId<HTMLElement>('assistant-view');
+const settingsPanel = byId<HTMLElement>('settings');
+const settingsForm = byId<HTMLFormElement>('settings-form');
+const settingsStatus = byId<HTMLElement>('settings-status');
+const settingsSave = byId<HTMLButtonElement>('settings-save');
+const geminiKey = byId<HTMLInputElement>('gemini-key');
+const geminiKeyState = byId<HTMLElement>('gemini-key-state');
+const geminiModel = byId<HTMLInputElement>('gemini-model');
+const elevenKey = byId<HTMLInputElement>('eleven-key');
+const elevenKeyState = byId<HTMLElement>('eleven-key-state');
+const elevenVoice = byId<HTMLInputElement>('eleven-voice');
 
 const canvas = document.createElement('canvas');
 canvas.setAttribute('aria-hidden', 'true');
@@ -81,6 +105,7 @@ let recordingStream: MediaStream | null = null;
 let recordingChunks: Blob[] = [];
 let discardRecording = false;
 let playback: HTMLAudioElement | null = null;
+let settingsOpen = false;
 
 const terminalStatuses = new Set(['completed', 'cancelled', 'error']);
 const clamp = (n: number) => Math.max(0, Math.min(1, n));
@@ -158,6 +183,16 @@ function draw(now: number) {
   else if (overlayActive) canvas.classList.add('settled');
 }
 
+function showSettings(open: boolean) {
+  settingsOpen = open;
+  settingsPanel.hidden = !open;
+  assistantView.hidden = open;
+  if (open) {
+    requestSettings();
+    window.setTimeout(() => geminiKey.focus(), reducedMotion.matches ? 0 : 350);
+  }
+}
+
 function setOverlay(active: boolean, origin?: Pick<SummonEvent, 'x' | 'y'>) {
   overlayActive = active;
   cancelAnimationFrame(animationFrame);
@@ -170,7 +205,7 @@ function setOverlay(active: boolean, origin?: Pick<SummonEvent, 'x' | 'y'>) {
     originY = clamp((origin?.y ?? height / 2) / height) * height;
     animationStarted = performance.now();
     draw(animationStarted);
-    window.setTimeout(() => requestInput.focus(), reducedMotion.matches ? 0 : 350);
+    if (!settingsOpen) window.setTimeout(() => requestInput.focus(), reducedMotion.matches ? 0 : 350);
   }
 }
 
@@ -251,8 +286,16 @@ function handleSocketMessage(rawMessage: unknown) {
     handshakeReject = null;
     return;
   }
+  if (message.type === 'settings_state') {
+    applySettingsState(message.payload as unknown as SettingsState);
+    return;
+  }
   if (message.type === 'error') {
     const errorText = typeof message.payload.message === 'string' ? message.payload.message : 'Core rejected the request.';
+    if (settingsOpen) {
+      settingsSave.disabled = false;
+      settingsStatus.textContent = `Core rejected the settings: ${errorText}`;
+    }
     appendActivity('error', errorText);
     updateStatus('error', 'Request error', errorText);
     if (message.request_id === activeRequestId) finishTask();
@@ -519,6 +562,7 @@ async function connectCore() {
     await socket.send(JSON.stringify(envelope('hello', { role: 'ui', token: config.token })));
     await handshake;
     setConnection('connected');
+    if (settingsOpen) await requestSettings();
   } catch (error) {
     await disconnectSocket();
     setConnection('disconnected', error instanceof Error ? error.message : String(error));
@@ -526,6 +570,101 @@ async function connectCore() {
     connecting = false;
   }
 }
+
+function keyStateText(set: boolean, fromEnvironment: boolean, optional: string) {
+  if (set && fromEnvironment) return 'Set from the environment Core was started with';
+  if (set) return 'Stored in Core';
+  return `Not set${optional}`;
+}
+
+function applySettingsState(state: SettingsState) {
+  settingsSave.disabled = false;
+  // Secrets are never echoed back, so the boxes clear and the label reports.
+  geminiKey.value = '';
+  elevenKey.value = '';
+  geminiKeyState.textContent = keyStateText(
+    Boolean(state.gemini_api_key_set), Boolean(state.gemini_api_key_from_environment), '',
+  );
+  geminiKeyState.dataset.set = String(Boolean(state.gemini_api_key_set));
+  elevenKeyState.textContent = keyStateText(
+    Boolean(state.elevenlabs_api_key_set), Boolean(state.elevenlabs_api_key_from_environment),
+    ' — typed requests still work',
+  );
+  elevenKeyState.dataset.set = String(Boolean(state.elevenlabs_api_key_set));
+  if (document.activeElement !== geminiModel) geminiModel.value = state.gemini_model ?? '';
+  if (document.activeElement !== elevenVoice) elevenVoice.value = state.elevenlabs_voice_id ?? '';
+  for (const input of settingsForm.querySelectorAll<HTMLInputElement>('input[name="model-mode"]')) {
+    input.checked = input.value === state.requested_mode;
+  }
+  const effective = state.model_mode === 'gemini'
+    ? 'Live Gemini is active.'
+    : 'Running in mock mode — no cloud calls.';
+  const mismatch = state.requested_mode === 'gemini' && state.model_mode === 'mock'
+    ? ' Add a Gemini key to go live.'
+    : '';
+  settingsStatus.textContent = state.saved
+    ? `Saved. ${effective}${mismatch}`
+    : `${effective}${mismatch} Keys are stored by Core only; this window never receives them back.`;
+}
+
+async function requestSettings() {
+  if (!connected) {
+    settingsStatus.textContent = 'Core is not connected, so settings cannot be read or saved yet.';
+    return;
+  }
+  try {
+    await sendEnvelope(envelope('settings_get', {}));
+  } catch (error) {
+    settingsStatus.textContent = error instanceof Error ? error.message : String(error);
+  }
+}
+
+async function saveSettings() {
+  if (!connected) {
+    settingsStatus.textContent = 'Core is not connected, so settings cannot be saved yet.';
+    return;
+  }
+  const mode = settingsForm.querySelector<HTMLInputElement>('input[name="model-mode"]:checked');
+  const update: JsonObject = {
+    gemini_model: geminiModel.value.trim(),
+    elevenlabs_voice_id: elevenVoice.value.trim(),
+  };
+  // Blank key boxes mean "leave what is stored alone", not "erase it".
+  if (geminiKey.value) update.gemini_api_key = geminiKey.value;
+  if (elevenKey.value) update.elevenlabs_api_key = elevenKey.value;
+  if (mode) update.model_mode = mode.value;
+  settingsSave.disabled = true;
+  settingsStatus.textContent = 'Saving to Core…';
+  try {
+    await sendEnvelope(envelope('settings_update', update));
+  } catch (error) {
+    settingsSave.disabled = false;
+    settingsStatus.textContent = error instanceof Error ? error.message : String(error);
+  }
+}
+
+settingsForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  saveSettings();
+});
+byId('settings-clear').addEventListener('click', async () => {
+  settingsSave.disabled = true;
+  settingsStatus.textContent = 'Clearing stored keys…';
+  try {
+    await sendEnvelope(envelope('settings_update', { clear_all: true }));
+  } catch (error) {
+    settingsSave.disabled = false;
+    settingsStatus.textContent = error instanceof Error ? error.message : String(error);
+  }
+});
+byId('settings-button').addEventListener('click', () => {
+  showSettings(!settingsOpen);
+  if (!settingsOpen) requestInput.focus();
+});
+byId('settings-back').addEventListener('click', () => {
+  showSettings(false);
+  requestInput.focus();
+});
 
 requestForm.addEventListener('submit', (event) => {
   event.preventDefault();
@@ -543,12 +682,18 @@ approveButton.addEventListener('click', () => answerConfirmation(true).catch(fai
 denyButton.addEventListener('click', () => answerConfirmation(false).catch(failLocal));
 byId('retry-button').addEventListener('click', () => connectCore());
 byId('close-button').addEventListener('click', async () => {
+  showSettings(false);
   setOverlay(false);
   if (isTauri()) await invoke('set_overlay_active', { active: false });
 });
 
 addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && overlayActive) {
+    if (settingsOpen) {
+      showSettings(false);
+      requestInput.focus();
+      return;
+    }
     setOverlay(false);
     if (isTauri()) invoke('set_overlay_active', { active: false }).catch(() => undefined);
   }
@@ -558,7 +703,10 @@ resize();
 setComposerEnabled(false);
 
 if (isTauri()) {
-  await listen<SummonEvent>('jarvis-toggle', (event) => setOverlay(event.payload.active, event.payload));
+  await listen<SummonEvent>('jarvis-toggle', (event) => {
+    showSettings(event.payload.active && event.payload.view === 'settings');
+    setOverlay(event.payload.active, event.payload);
+  });
   await invoke('overlay_ready');
   await connectCore();
 } else {

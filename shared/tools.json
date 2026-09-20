@@ -1,524 +1,524 @@
 {
-  "version": "1.0",
-  "tools": {
-    "get_system_state": {
-      "parameters": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "READ_ONLY",
-      "privacy": "local",
-      "description": "get system state"
+ "version": "1.0",
+ "tools": {
+  "get_system_state": {
+   "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "READ_ONLY",
+   "privacy": "local",
+   "description": "Read the machine's current state: foreground application and window title, lock state, and where available audio volume, screen brightness, battery and network. Cheap and read-only; prefer it over looking at the screen."
+  },
+  "get_ui_state": {
+   "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "READ_ONLY",
+   "privacy": "local",
+   "description": "List the accessible elements of the foreground window, with their roles, names and whether they are enabled and visible. Use it to find something to act on before falling back to any image."
+  },
+  "open_app": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     }
     },
-    "get_ui_state": {
-      "parameters": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "READ_ONLY",
-      "privacy": "local",
-      "description": "get ui state"
+    "required": [
+     "name"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "REVERSIBLE",
+   "privacy": "local",
+   "description": "Launch an application by its display name, for example 'Calculator' or 'Notepad'. Use the name a person would use, not a file path."
+  },
+  "open_url": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "url": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     }
     },
-    "open_app": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "REVERSIBLE",
-      "privacy": "local",
-      "description": "open app"
+    "required": [
+     "url"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "CONSEQUENTIAL",
+   "privacy": "local",
+   "description": "Open a web address in the user's default browser. Only http and https addresses are accepted."
+  },
+  "set_setting": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "setting": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     },
+     "value": {
+      "type": [
+       "string",
+       "number",
+       "boolean"
+      ]
+     }
     },
-    "open_url": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "url": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          }
-        },
-        "required": [
-          "url"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "CONSEQUENTIAL",
-      "privacy": "local",
-      "description": "open url"
+    "required": [
+     "setting",
+     "value"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "SECURITY_SENSITIVE",
+   "privacy": "local",
+   "description": "Change one allowed machine setting through a direct Windows API. 'volume' and 'brightness' take an integer from 0 to 100; 'mute' takes true or false. No other setting name is accepted."
+  },
+  "search_ui": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "query": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     }
     },
-    "set_setting": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "setting": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          },
-          "value": {
-            "type": [
-              "string",
-              "number",
-              "boolean"
-            ]
-          }
-        },
-        "required": [
-          "setting",
-          "value"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "SECURITY_SENSITIVE",
-      "privacy": "local",
-      "description": "set setting"
+    "required": [
+     "query"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "core",
+   "risk": "READ_ONLY",
+   "privacy": "local",
+   "description": "Retrieve relevant UI elements locally. Call before broader UI inspection."
+  },
+  "inspect_ui": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,100}$"
+     }
     },
-    "search_ui": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "query": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          }
-        },
-        "required": [
-          "query"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "core",
-      "risk": "READ_ONLY",
-      "privacy": "local",
-      "description": "Retrieve relevant UI elements locally. Call before broader UI inspection."
+    "required": [
+     "id"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "core",
+   "risk": "READ_ONLY",
+   "privacy": "local",
+   "description": "Read everything known about one UI element by its id, after search_ui has returned it. Use it to check a target is still the one you meant before acting on it."
+  },
+  "invoke_ui": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,100}$"
+     },
+     "mode": {
+      "type": "string",
+      "enum": [
+       "direct",
+       "visible"
+      ]
+     }
     },
-    "inspect_ui": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{1,100}$"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "core",
-      "risk": "READ_ONLY",
-      "privacy": "local",
-      "description": "inspect ui"
+    "required": [
+     "id",
+     "mode"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "CONSEQUENTIAL",
+   "privacy": "local",
+   "description": "Activate a UI element by its id through the accessibility layer, the way a screen reader would press it. This is the preferred way to click something: it is precise and does not depend on pixel positions."
+  },
+  "set_ui_value": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,100}$"
+     },
+     "value": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     }
     },
-    "invoke_ui": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{1,100}$"
-          },
-          "mode": {
-            "type": "string",
-            "enum": [
-              "direct",
-              "visible"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "mode"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "CONSEQUENTIAL",
-      "privacy": "local",
-      "description": "invoke ui"
+    "required": [
+     "id",
+     "value"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "CONSEQUENTIAL",
+   "privacy": "local",
+   "description": "Put a value into an editable UI element by its id, through the accessibility layer, replacing what is there."
+  },
+  "scroll": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "direction": {
+      "type": "string",
+      "enum": [
+       "up",
+       "down",
+       "left",
+       "right"
+      ]
+     },
+     "amount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+     }
     },
-    "set_ui_value": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{1,100}$"
-          },
-          "value": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          }
-        },
-        "required": [
-          "id",
-          "value"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "CONSEQUENTIAL",
-      "privacy": "local",
-      "description": "set ui value"
+    "required": [
+     "direction",
+     "amount"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "REVERSIBLE",
+   "privacy": "local",
+   "description": "Scroll the foreground window up, down, left or right by a number of notches."
+  },
+  "move_mouse": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "x": {
+      "type": "number"
+     },
+     "y": {
+      "type": "number"
+     }
     },
-    "scroll": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "direction": {
-            "type": "string",
-            "enum": [
-              "up",
-              "down",
-              "left",
-              "right"
-            ]
-          },
-          "amount": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 10
-          }
-        },
-        "required": [
-          "direction",
-          "amount"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "REVERSIBLE",
-      "privacy": "local",
-      "description": "scroll"
+    "required": [
+     "x",
+     "y"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "REVERSIBLE",
+   "privacy": "local",
+   "description": "Move the mouse pointer to a screen coordinate without pressing anything. Use it only when no accessible element exists for the target."
+  },
+  "click": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "x": {
+      "type": "number"
+     },
+     "y": {
+      "type": "number"
+     }
     },
-    "move_mouse": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "x": {
-            "type": "number"
-          },
-          "y": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "x",
-          "y"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "REVERSIBLE",
-      "privacy": "local",
-      "description": "move mouse"
+    "required": [
+     "x",
+     "y"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "CONSEQUENTIAL",
+   "privacy": "local",
+   "description": "Press the mouse at a screen coordinate. A last resort: prefer invoke_ui, which cannot miss and does not depend on the window staying still."
+  },
+  "type_text": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     }
     },
-    "click": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "x": {
-            "type": "number"
-          },
-          "y": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "x",
-          "y"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "CONSEQUENTIAL",
-      "privacy": "local",
-      "description": "click"
+    "required": [
+     "text"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "CONSEQUENTIAL",
+   "privacy": "local",
+   "description": "Type literal text into whatever currently has keyboard focus. Never type passwords or other secrets."
+  },
+  "press_key": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     }
     },
-    "type_text": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          }
-        },
-        "required": [
-          "text"
-        ],
-        "additionalProperties": false
+    "required": [
+     "key"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "CONSEQUENTIAL",
+   "privacy": "local",
+   "description": "Press one key or shortcut, for example 'enter' or 'ctrl+s', in the focused window."
+  },
+  "inspect_screen": {
+   "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "CONSEQUENTIAL",
+   "privacy": "cloud_image",
+   "description": "Capture the whole screen and send it to the model. The most expensive and least private option: it needs the user's consent, and it is refused until a region capture has been tried."
+  },
+  "inspect_region": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "bounds": {
+      "type": "object",
+      "properties": {
+       "x": {
+        "type": "number"
+       },
+       "y": {
+        "type": "number"
+       },
+       "width": {
+        "type": "number",
+        "minimum": 0
+       },
+       "height": {
+        "type": "number",
+        "minimum": 0
+       }
       },
-      "owner": "platform",
-      "risk": "CONSEQUENTIAL",
-      "privacy": "local",
-      "description": "type text"
+      "required": [
+       "x",
+       "y",
+       "width",
+       "height"
+      ],
+      "additionalProperties": false
+     }
     },
-    "press_key": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          }
-        },
-        "required": [
-          "key"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "CONSEQUENTIAL",
-      "privacy": "local",
-      "description": "press key"
+    "required": [
+     "bounds"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "CONSEQUENTIAL",
+   "privacy": "cloud_image",
+   "description": "Capture one rectangle of the screen and send it to the model. Needs the user's consent, and is refused until search_ui and get_ui_state have been tried. Ask for the smallest region that answers the question."
+  },
+  "open_file": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     }
     },
-    "inspect_screen": {
-      "parameters": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "CONSEQUENTIAL",
-      "privacy": "cloud_image",
-      "description": "inspect screen"
+    "required": [
+     "path"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "CONSEQUENTIAL",
+   "privacy": "local",
+   "description": "Open a file with whatever application Windows associates with it, given its full path."
+  },
+  "open_folder": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     }
     },
-    "inspect_region": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "bounds": {
-            "type": "object",
-            "properties": {
-              "x": {
-                "type": "number"
-              },
-              "y": {
-                "type": "number"
-              },
-              "width": {
-                "type": "number",
-                "minimum": 0
-              },
-              "height": {
-                "type": "number",
-                "minimum": 0
-              }
-            },
-            "required": [
-              "x",
-              "y",
-              "width",
-              "height"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "required": [
-          "bounds"
-        ],
-        "additionalProperties": false
+    "required": [
+     "path"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "CONSEQUENTIAL",
+   "privacy": "local",
+   "description": "Open a folder in File Explorer, given its full path."
+  },
+  "run_approved_action": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "action": {
+      "type": "string",
+      "enum": [
+       "set_volume",
+       "set_brightness"
+      ]
+     },
+     "args": {
+      "type": "object",
+      "properties": {
+       "value": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100
+       }
       },
-      "owner": "platform",
-      "risk": "CONSEQUENTIAL",
-      "privacy": "cloud_image",
-      "description": "inspect region"
+      "required": [
+       "value"
+      ],
+      "additionalProperties": false
+     }
     },
-    "open_file": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          }
-        },
-        "required": [
-          "path"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "CONSEQUENTIAL",
-      "privacy": "local",
-      "description": "open file"
+    "required": [
+     "action",
+     "args"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "platform",
+   "risk": "REVERSIBLE",
+   "privacy": "local",
+   "description": "Run one of the narrow pre-approved operations ('set_volume' or 'set_brightness') with an integer 0 to 100. There is no shell path here by construction."
+  },
+  "propose_command": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "command": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     },
+     "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     }
     },
-    "open_folder": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          }
-        },
-        "required": [
-          "path"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "CONSEQUENTIAL",
-      "privacy": "local",
-      "description": "open folder"
+    "required": [
+     "command",
+     "reason"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "core",
+   "risk": "SECURITY_SENSITIVE",
+   "privacy": "local",
+   "description": "Propose a shell command for review. This build never executes arbitrary shell."
+  },
+  "ask_user": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     }
     },
-    "run_approved_action": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "action": {
-            "type": "string",
-            "enum": [
-              "set_volume",
-              "set_brightness"
-            ]
-          },
-          "args": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 100
-              }
-            },
-            "required": [
-              "value"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "required": [
-          "action",
-          "args"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "platform",
-      "risk": "REVERSIBLE",
-      "privacy": "local",
-      "description": "run approved action"
+    "required": [
+     "message"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "core",
+   "risk": "READ_ONLY",
+   "privacy": "local",
+   "description": "Ask the user a question in their own words and wait for the answer. Use it when the request is ambiguous rather than guessing, and never to ask for a password or other secret."
+  },
+  "request_confirmation": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "action": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     },
+     "consequence": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     }
     },
-    "propose_command": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "command": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          },
-          "reason": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          }
-        },
-        "required": [
-          "command",
-          "reason"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "core",
-      "risk": "SECURITY_SENSITIVE",
-      "privacy": "local",
-      "description": "Propose a shell command for review. This build never executes arbitrary shell."
+    "required": [
+     "action",
+     "consequence"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "core",
+   "risk": "CONSEQUENTIAL",
+   "privacy": "local",
+   "description": "Ask about an intent. Does not grant authorization to any later tool."
+  },
+  "complete_task": {
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+     }
     },
-    "ask_user": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          }
-        },
-        "required": [
-          "message"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "core",
-      "risk": "READ_ONLY",
-      "privacy": "local",
-      "description": "ask user"
-    },
-    "request_confirmation": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "action": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          },
-          "consequence": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          }
-        },
-        "required": [
-          "action",
-          "consequence"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "core",
-      "risk": "CONSEQUENTIAL",
-      "privacy": "local",
-      "description": "Ask about an intent. Does not grant authorization to any later tool."
-    },
-    "complete_task": {
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
-          }
-        },
-        "required": [
-          "message"
-        ],
-        "additionalProperties": false
-      },
-      "owner": "core",
-      "risk": "READ_ONLY",
-      "privacy": "local",
-      "description": "complete task"
-    }
+    "required": [
+     "message"
+    ],
+    "additionalProperties": false
+   },
+   "owner": "core",
+   "risk": "READ_ONLY",
+   "privacy": "local",
+   "description": "Finish the task and tell the user what happened, in plain language. State what was actually done and, if something could not be verified, say so rather than claiming success."
   }
+ }
 }

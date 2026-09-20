@@ -18,7 +18,12 @@ Every real typed/transcribed request enters Gemini before any tool. No fast inte
 router exists; `model_factory` is the extension seam for future routing experiments.
 
 Core owns task lifecycle, model history/tool continuation, context selection,
-policy, exact-action confirmations, memory, platform orchestration and voice.
+policy, exact-action confirmations, memory, platform orchestration, voice and
+provider credentials. Settings live in `.agent-data/settings.json`, written only
+by Core; the UI may set a value or ask whether one exists, and the provider is
+chosen per task from those settings, so a key added from the tray takes effect
+without a restart. Stored values take priority over Core's environment, and a
+cleared field falls back to it.
 `shared/` owns contracts. UI owns presentation, capture and playback. Platform owns
 OS observation/action and trusted UI metadata. No OS-specific code lives in Core.
 

@@ -20,8 +20,23 @@ range. The token is read from the process environment, used for the hello frame,
 and is never written to source, a URL, local storage, logs, or the visible UI.
 
 Use `Ctrl+Alt+J` to open or close the overlay and `Ctrl+Alt+Shift+J` to quit.
-Escape also closes it. While closed, the transparent full-screen window ignores
-mouse input. While open, it is focusable and keyboard navigable.
+Escape also closes it, or leaves the settings pane if that is open. While closed,
+the transparent full-screen window ignores mouse input. While open, it is
+focusable and keyboard navigable.
+
+## Tray icon and settings
+
+A tray icon is the app's resting state: closing the overlay leaves JARVIS running
+there rather than quitting it. Left-click toggles the overlay; the menu offers
+Open JARVIS, Settings and Quit. The gear in the overlay header opens the same
+settings pane, which is also how the pane is reachable in the browser-only Vite
+preview.
+
+The pane never handles stored secrets. It sends `settings_update` over the
+authenticated socket and renders the `settings_state` that comes back, which
+reports only whether each key is set. A blank key box means "leave the stored key
+alone"; clearing one requires the Clear all button. This process is still started
+without provider credentials, so a compromised UI has nothing to leak.
 
 ## Implemented protocol behavior
 
@@ -32,6 +47,7 @@ mouse input. While open, it is focusable and keyboard navigable.
 - `user_reply` for `awaiting_input`, distinct from a new request
 - local recording/playback stop followed by protocol cancellation
 - stale/other-task event rejection, terminal-state handling and reconnect UI
+- `settings_get` / `settings_update` / `settings_state` for provider configuration
 - no API keys in the UI process; provider credentials remain in Core
 
 The visual layer supports keyboard focus indicators, live status announcements,

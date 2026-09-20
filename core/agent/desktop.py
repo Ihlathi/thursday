@@ -17,6 +17,28 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 PROVIDER_KEYS = ("GEMINI_API_KEY", "ELEVENLABS_API_KEY", "ELEVENLABS_VOICE_ID")
 
 
+def load_env_file(path: Path, base: dict[str, str]) -> list[str]:
+    """Seed the launcher's own environment from .env, without overriding a real
+    environment variable. Core still never reads files like this itself; keys
+    saved from the tray live in .agent-data/settings.json instead."""
+    loaded: list[str] = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return loaded
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, _, value = line.partition("=")
+        name, value = name.strip(), value.strip().strip('"').strip("'")
+        if not name or not value or name in base:
+            continue
+        base[name] = value
+        loaded.append(name)
+    return loaded
+
+
 def _without(environment: dict[str, str], *names: str) -> dict[str, str]:
     result = environment.copy()
     for name in names:
@@ -78,7 +100,8 @@ def _package_manager() -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Start the complete desktop accessibility agent")
-    parser.add_argument("--mode", choices=("mock", "gemini"), default=os.getenv("AGENT_MODEL_MODE", "gemini"))
+    parser.add_argument("--mode", choices=("mock", "gemini"), default=None,
+                        help="Pin the provider; omit to follow the keys saved in Settings")
     parser.add_argument("--platform", choices=("windows", "mock"), default="windows")
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
@@ -91,6 +114,9 @@ def main() -> None:
     ui_token = secrets.token_urlsafe(32)
     platform_token = secrets.token_urlsafe(32)
     base = os.environ.copy()
+    loaded = load_env_file(REPO_ROOT / ".env", base)
+    if loaded:
+        print("Seeded from .env: " + ", ".join(loaded), flush=True)
     core_environment, platform_environment, ui_environment = child_environments(
         base, ui_token, platform_token, args.port
     )
@@ -99,8 +125,11 @@ def main() -> None:
     launcher = str(REPO_ROOT / "run.py")
     processes: list[subprocess.Popen] = []
     try:
+        serve_command = [python, launcher, "serve", "--port", str(args.port)]
+        if args.mode:
+            serve_command += ["--mode", args.mode]
         core = subprocess.Popen(
-            [python, launcher, "serve", "--mode", args.mode, "--port", str(args.port)],
+            serve_command,
             cwd=REPO_ROOT,
             env=core_environment,
         )
@@ -122,7 +151,7 @@ def main() -> None:
         processes.append(platform)
 
         package_manager = _package_manager()
-        print("Starting JARVIS. Press Ctrl+Alt+J to open it.", flush=True)
+        print("Starting JARVIS. Press Ctrl+Alt+J to open it, or use the tray icon.", flush=True)
         ui = subprocess.Popen(
             [package_manager, "run", "tauri", "dev"],
             cwd=REPO_ROOT / "apps" / "ui",

@@ -21,8 +21,16 @@ All cloud calls are injectable/mockable. GEMINI_MODEL, ELEVENLABS_STT_MODEL and
 ELEVENLABS_TTS_MODEL override defaults. Actual account availability/quotas must be
 verified with that account. Documentation verification is not a live provider test.
 
-Set GEMINI_API_KEY and choose `--mode gemini`. Missing credentials produce a clear
-configuration_error; the Core never silently switches to mocks. Optional voice needs
+Configure keys in the settings pane (tray icon, or the gear in the overlay). They
+travel to Core over the authenticated loopback socket and are stored in
+`.agent-data/settings.json`; the UI and platform processes never hold them. Stored
+values take priority over GEMINI_API_KEY and friends in Core's environment, and
+clearing a field falls back to the environment again. Missing credentials produce a
+clear configuration_error naming where to put the key; Core never silently switches
+to mocks, and it reports `mock` rather than claiming live Gemini without a key.
+Transient provider responses (408, 429, 500, 502, 503, 504) are retried up to four
+times with exponential backoff and jitter; authentication and request errors are
+raised at once. Optional voice needs
 ELEVENLABS_API_KEY; speech output also needs an authorized ELEVENLABS_VOICE_ID.
 Mock model mode does not mock ElevenLabs: audio still requires voice credentials.
 Tests use an injected HTTP transport to avoid cloud requests.

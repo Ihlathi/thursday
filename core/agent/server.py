@@ -7,21 +7,29 @@ from websockets.exceptions import ConnectionClosed
 from .contracts import envelope, validate
 from .engine import Engine
 from .memory import WorkingMemory, LongTermMemory
-from .providers import GeminiModel, MockModel
+from .providers import GeminiModel, MockModel, configure
+from .settings import Settings
 from .transport import MAX_MESSAGE, RemotePlatform, authenticate
 
 class CoreServer:
-    def __init__(self,ui_token,platform_token,model_factory=MockModel,data_dir='.agent-data'):
+    def __init__(self,ui_token,platform_token,model_factory=MockModel,data_dir='.agent-data',mode=None):
         if len(ui_token)<32 or len(platform_token)<32 or ui_token==platform_token:
             raise ValueError('Use distinct random UI and platform tokens of at least 32 characters')
         self.ui_token,self.platform_token=ui_token,platform_token
         self.platform=RemotePlatform()
+        self.settings=Settings(Path(data_dir)/'settings.json',mode or 'gemini')
+        configure(self.settings)
         self.memory=LongTermMemory(Path(data_dir)/'memory.sqlite3')
-        self.engine=Engine(self.platform,WorkingMemory(float(os.getenv('AGENT_WORKING_TTL','1800'))),self.memory,model_factory)
+        # With no explicit factory the provider follows Settings, so a key added
+        # from the tray takes effect on the next task without a restart.
+        factory=model_factory if model_factory is not None else self.provider
+        self.engine=Engine(self.platform,WorkingMemory(float(os.getenv('AGENT_WORKING_TTL','1800'))),self.memory,factory)
         self.ui=None
         self.active=None
         self.task_id=None
         self.seen=set()
+    def provider(self):
+        return GeminiModel() if self.settings.model_mode=='gemini' else MockModel()
     async def handle(self,ws):
         path=ws.request.path
         if path=='/v1/platform':
@@ -57,6 +65,19 @@ class CoreServer:
                         if ws.state.name=='OPEN':
                             await ws.send(json.dumps(envelope('agent_event',{'status':status,**fields},_tid,_rid)))
                     self.active=asyncio.create_task(self.engine.run(task_id,payload,emit))
+                elif kind in ('settings_get','settings_update'):
+                    # Credentials arrive over the authenticated loopback socket and
+                    # stay here; only presence flags are ever sent back.
+                    saved=False
+                    if kind=='settings_update':
+                        try:
+                            if payload.get('clear_all'): self.settings.clear()
+                            else: self.settings.update({k:v for k,v in payload.items() if k!='clear_all'})
+                            saved=True
+                        except (ValueError,OSError) as exc:
+                            await send_error('settings_rejected',str(exc),msg['request_id']); continue
+                    state=self.settings.state()|{'saved':saved}
+                    await ws.send(json.dumps(envelope('settings_state',state,request_id=msg['request_id'])))
                 elif kind in ('cancel','confirmation_response','user_reply'):
                     if task_id!=self.task_id or not self.active or self.active.done():
                         await send_error('inactive_task','No matching active task.',msg['request_id']); continue
