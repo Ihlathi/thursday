@@ -1,13 +1,10 @@
 import { isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-const settingsPreview = new URLSearchParams(location.search).get('window') === 'settings';
-const settingsWindow = isTauri() ? getCurrentWindow().label === 'settings' : settingsPreview;
-
-if (isTauri() && getCurrentWindow().label === 'assistant') {
-  void import('./assistant-window');
-} else if (settingsWindow) {
-  void import('./settings-window');
-} else {
-  void import('./overlay');
-}
+const loaders = {
+  settings: () => import('./settings-window'),
+  assistant: () => import('./assistant-window'),
+  main: () => import('./overlay'),
+};
+const label = isTauri() ? getCurrentWindow().label : new URLSearchParams(location.search).get('window');
+void loaders[label === 'settings' || label === 'assistant' ? label : 'main']();

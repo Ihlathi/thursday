@@ -88,17 +88,31 @@ const pages: Record<Exclude<Tab, 'general'>, ControlGroup[]> = {
   ],
 };
 
+const icon = (name: string) => {
+  const paths: Record<string, string> = {
+    general: '<path d="m3 10 9-8 9 8M5 9v12h5v-7h4v7h5V9"/>',
+    appearance: '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 22h8M12 17v5"/>',
+    mouse: '<rect x="5" y="2" width="14" height="20" rx="7"/><path d="M12 2v8"/>',
+    reset: '<path d="M20 7a9 9 0 0 0-15-2L2 8m0-6v6h6M4 17a9 9 0 0 0 15 2l3-3m0 6v-6h-6"/>',
+    accessibility: '<circle cx="12" cy="4" r="2"/><path d="m3 8 9 2 9-2M12 10v5m-6 7 6-7 6 7"/>',
+    light: '<circle cx="12" cy="12" r="5"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2"/>',
+    wave: '<path d="M2 12c4-12 6 12 10 0s6 12 10 0"/>',
+  };
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] ?? paths.light}</svg>`;
+};
+const groupIcon = (title: string) => title === 'Movement' || title === 'Summon and dismiss' || title === 'Click response' ? 'wave' : title === 'Border' ? 'appearance' : title === 'Cursor aura' ? 'mouse' : 'light';
+
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
   <div class="settings-shell">
     <aside class="settings-sidebar" aria-label="Settings categories">
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span><div><strong>JARVIS</strong><span>Settings</span></div></div>
       <nav class="settings-nav">
-        <button class="nav-item active" data-tab="general"><span>General</span></button>
-        <button class="nav-item" data-tab="appearance"><span>Appearance</span></button>
-        <button class="nav-item" data-tab="mouse"><span>Mouse Control</span></button>
+        <button class="nav-item active" data-tab="general">${icon('general')}<span>General</span></button>
+        <button class="nav-item" data-tab="appearance">${icon('appearance')}<span>Appearance</span></button>
+        <button class="nav-item" data-tab="mouse">${icon('mouse')}<span>Mouse Control</span></button>
       </nav>
-      <button id="reset-all" class="reset-button">Reset to defaults</button>
+      <button id="reset-all" class="reset-button">${icon('reset')}<span>Reset to defaults</span></button>
     </aside>
     <main class="settings-content">
       <header><p class="eyebrow">JARVIS CONTROL SURFACE</p><h1 id="page-title">General</h1><p id="page-description">Core comfort and accessibility preferences.</p></header>
@@ -117,7 +131,7 @@ let saveTimer = 0;
 
 function scheduleUpdate() {
   void broadcastVisualSettings(settings);
-  statusElement.textContent = 'Applying changes…';
+  statusElement.textContent = 'Applying changesâ€¦';
   clearTimeout(saveTimer);
   saveTimer = window.setTimeout(async () => {
     try {
@@ -154,7 +168,7 @@ function renderGeneral() {
   const section = document.createElement('section');
   section.className = 'settings-card';
   section.innerHTML = `
-    <div class="section-heading"><div><h2>Accessibility</h2><p>Adapt motion while keeping JARVIS visually clear.</p></div></div>
+    <div class="section-heading">${icon('accessibility')}<div><h2>Accessibility</h2><p>Adapt motion while keeping JARVIS visually clear.</p></div></div>
     <label class="toggle-row" for="reduced-motion">
       <span><strong>Reduced motion</strong><small>Shorten animated transitions and suppress decorative breathing.</small></span>
       <input id="reduced-motion" type="checkbox" ${settings.reducedMotion ? 'checked' : ''}>
@@ -187,7 +201,7 @@ function renderPage() {
   for (const group of pages[activeTab]) {
     const section = document.createElement('section');
     section.className = 'settings-card';
-    section.innerHTML = `<div class="section-heading"><div><h2>${group.title}</h2><p>${group.description}</p></div></div>`;
+    section.innerHTML = `<div class="section-heading">${icon(groupIcon(group.title))}<div><h2>${group.title}</h2><p>${group.description}</p></div></div>`;
     for (const control of group.controls) section.append(slider(control));
     pageElement.append(section);
   }
