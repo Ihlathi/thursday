@@ -80,7 +80,12 @@ class Policy:
         if world.system and world.system['locked'] and risk!='READ_ONLY':
             return Decision('SECURITY_SENSITIVE',False,'The computer is locked.',True)
         if name == 'propose_command':
-            return Decision('SECURITY_SENSITIVE',True,'Review only: arbitrary shell execution is disabled.')
+            # Nothing to consent to: this tool never executes anything, it only
+            # reports the command back. Asking permission for a no-op is exactly
+            # the kind of prompt that teaches people to stop reading prompts.
+            return Decision('SECURITY_SENSITIVE',False,
+                            "I can't run commands on your computer, but I can show you what one would be.",
+                            action=describe(tool,world))
         if name=='open_app':
             known=args['name'].lower() in REVERSIBLE_APPS
             risk='REVERSIBLE' if known or relaxed else 'CONSEQUENTIAL'
@@ -144,6 +149,13 @@ class Confirmations:
             return False
         finally:
             self.pending.pop(cid,None)
+    def pending_payload(self, task_id):
+        for owner,payload,future in self.pending.values():
+            if owner==task_id and not future.done(): return payload
+        return None
+    def extend(self, payload, seconds):
+        """A person who asks what something means deserves time to answer it."""
+        payload['expires_at']=time.time()+seconds
     def respond(self, task_id, response):
         validate_def('ConfirmationResponse',response)
         entry=self.pending.get(response['confirmation_id'])

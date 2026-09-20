@@ -41,7 +41,9 @@ def test_assistive_posture_confirms_only_what_cannot_be_undone(assistive):
     assert p.classify(call('invoke_ui',id='orders',mode='visible'),world('security')).confirm
     assert p.classify(call('press_key',key='alt+F4'),world()).confirm
     assert p.classify(call('set_setting',setting='firewall',value=False),world()).confirm
-    assert p.classify(call('propose_command',command='rm -rf /',reason='x'),world()).confirm
+    # Nothing to consent to: propose_command never executes, it only reports back.
+    shell=p.classify(call('propose_command',command='rm -rf /',reason='x'),world())
+    assert not shell.confirm and 'run commands' in shell.reason
     # Unknown targets are still refused outright, in either posture.
     assert p.classify(call('invoke_ui',id='unknown',mode='visible'),world()).blocked
 

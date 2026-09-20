@@ -10,11 +10,13 @@ from .providers import ConfigurationError, ElevenLabsVoice
 from .world import World
 
 class Engine:
-    def __init__(self,platform,working,memory,model_factory,*,max_steps=16,timeout=45,confirmation_timeout=60,voice=None):
+    def __init__(self,platform,working,memory,model_factory,*,max_steps=16,timeout=45,
+                 confirmation_timeout=float(os.getenv('AGENT_CONFIRM_TIMEOUT','180')),voice=None):
         self.platform,self.working,self.memory=platform,working,memory
         self.model_factory=model_factory
         self.max_steps,self.timeout=max_steps,timeout
         self.policy=Policy()
+        self.confirmation_timeout=confirmation_timeout
         self.confirmations=Confirmations(confirmation_timeout)
         self.voice=voice or ElevenLabsVoice()
         self.world=World()
@@ -29,22 +31,48 @@ class Engine:
         A user who talks to this tool answers its questions the same way. Core
         already owns transcription, so the UI ships the recording and Core
         resolves it into `text` (a reply) or `approved` (a confirmation).
+
+        Returns None for a spoken confirmation that is neither yes nor no --
+        usually a question about what is being asked. That is not a refusal and
+        must not be treated as one; the caller explains and asks again.
         """
         if 'audio' not in payload: return payload
         text=await asyncio.wait_for(self.voice.transcribe(payload['audio']),self.timeout)
         resolved={k:v for k,v in payload.items() if k!='audio'}
         if 'reply_to' in resolved:
             resolved['text']=(text or '').strip()[:4096] or 'no answer'
-        else:
-            resolved['approved']=self.approves(text)
+            return resolved
+        verdict=self.approves(text)
+        if verdict is None: return None
+        resolved['approved']=verdict
         return resolved
     @staticmethod
     def approves(text):
-        """Deterministic yes/no. Code decides consent, never the model, and
-        anything unclear counts as no rather than as a silent yes."""
+        """Deterministic yes / no / not-an-answer. Code decides consent, never
+        the model. Silence and gibberish are no; a question is neither."""
         words=set(re.findall(r"[a-z]+",(text or '').lower()))
-        if words & {'no','nope','stop','cancel','dont','deny','negative','abort','nevermind','wait'}: return False
-        return bool(words & {'yes','yeah','yep','yup','sure','ok','okay','okey','confirm','approve','approved','go','proceed','continue','affirmative','correct','please'})
+        if not words: return False
+        if words & {'no','nope','stop','cancel','dont','deny','negative','abort','nevermind'}: return False
+        if words & {'yes','yeah','yep','yup','sure','ok','okay','okey','confirm','approve','approved','proceed','affirmative','correct'}: return True
+        if words & {'what','why','how','who','which','mean','means','meaning','explain','huh','sorry','pardon','repeat','again','unsure','confused'}: return None
+        return False
+    async def clarify(self,task_id,emit):
+        """Explain the pending question in plainer words and ask it again."""
+        payload=self.confirmations.pending_payload(task_id)
+        if not payload: return False
+        self.confirmations.extend(payload,self.confirmation_timeout)
+        await self.say(self.explain(payload),emit)
+        # Re-emitting the same confirmation keeps one live consent (same id, same
+        # hash) while giving the UI a fresh prompt to listen against.
+        await emit('confirmation_required',confirmation=payload)
+        return True
+    @staticmethod
+    def explain(payload):
+        action=payload['action']
+        action=action[0].lower()+action[1:] if action else 'this'
+        return (f"Sorry. What I'd like to do is {action}. I'm checking with you first because "
+                f"{payload['consequence']}. Say yes and I'll do it now, or say no and I'll leave it alone. "
+                "Which would you like?")
     async def adapter(self,task_id,tool):
         result=await asyncio.wait_for(self.platform.execute(task_id,tool),self.timeout)
         validate_def('ToolResult',result)

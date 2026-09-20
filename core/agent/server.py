@@ -56,6 +56,8 @@ class CoreServer:
                     async def emit(status,*,_tid=task_id,_rid=request_id,**fields):
                         if ws.state.name=='OPEN':
                             await ws.send(json.dumps(envelope('agent_event',{'status':status,**fields},_tid,_rid)))
+                    # Kept so a mid-task clarification can speak on this task.
+                    self.emit_active=emit
                     self.active=asyncio.create_task(self.engine.run(task_id,payload,emit))
                 elif kind in ('cancel','confirmation_response','user_reply'):
                     if task_id!=self.task_id or not self.active or self.active.done():
@@ -69,6 +71,11 @@ class CoreServer:
                             payload=await self.engine.resolve_spoken(payload)
                         except Exception:
                             await send_error('voice_unavailable','Could not transcribe the spoken answer.',msg['request_id']); continue
+                        if payload is None:
+                            # They asked a question instead of answering one.
+                            # Explain and ask again rather than reading it as a no.
+                            await self.engine.clarify(task_id,self.emit_active)
+                            continue
                         accepted=(self.engine.confirmations.respond(task_id,payload) if kind=='confirmation_response' else self.engine.reply(task_id,payload))
                         if not accepted: await send_error('invalid_response','Response is stale or does not match the pending request.',msg['request_id'])
                 else: await send_error('unexpected_message','UI cannot send this message type.',msg['request_id'])
