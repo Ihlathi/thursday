@@ -1,12 +1,18 @@
 import { listen } from '@tauri-apps/api/event';
 import { invoke, isTauri } from '@tauri-apps/api/core';
+import { attachPointerLayer, playPointer, type OverlayMetrics } from './pointer';
+import { startCoreLink } from './core-link';
 
+const host = document.querySelector('#app')!;
 const canvas = document.createElement('canvas');
+canvas.className = 'summon-layer';
 canvas.setAttribute('aria-hidden', 'true');
-document.querySelector('#app')!.append(canvas);
+host.append(canvas);
+attachPointerLayer(host);
 const ctx = canvas.getContext('2d', { alpha: true })!;
 const duration = 500;
 let active = false;
+let closing = false;
 let started = 0;
 let frame = 0;
 let width = innerWidth;
@@ -86,7 +92,10 @@ function edge(length: number, distance: number, contactPoint: number, radius: nu
 
 function draw(now: number) {
   cancelAnimationFrame(frame);
-  const p = reducedMotion.matches ? 1 : clamp((now - started) / duration);
+  // Dismissal replays the same geometry in reverse: the ring collapses back to
+  // its origin instead of the whole layer simply fading out.
+  const raw = reducedMotion.matches ? 1 : clamp((now - started) / duration);
+  const p = closing ? 1 - raw : raw;
   const cornerDistances = [
     Math.hypot(originX, originY),
     Math.hypot(width - originX, originY),
@@ -113,31 +122,63 @@ function draw(now: number) {
     glow.addColorStop(1, 'rgba(185,226,250,0)');
     ctx.fillStyle = glow; ctx.fillRect(x - 170, y - 170, 340, 340);
   });
-  if (active && p < 1) frame = requestAnimationFrame(draw);
-  else if (active) canvas.classList.add('settled');
+  if (raw < 1) {
+    frame = requestAnimationFrame(draw);
+  } else if (closing) {
+    closing = false;
+    active = false;
+    canvas.classList.remove('visible');
+    ctx.clearRect(0, 0, width, height);
+  } else if (active) {
+    canvas.classList.add('settled');
+  }
+}
+
+function summon(origin?: SummonOrigin) {
+  if (active && !closing) return;
+  active = true;
+  closing = false;
+  cancelAnimationFrame(frame);
+  canvas.classList.remove('settled');
+  canvas.classList.add('visible');
+  originX = clamp((origin?.x ?? width / 2) / width) * width;
+  originY = clamp((origin?.y ?? height / 2) / height) * height;
+  started = performance.now();
+  draw(started);
+}
+
+function dismiss() {
+  if (!active || closing) return;
+  closing = true;
+  canvas.classList.remove('settled');
+  setOverlayMode('idle');
+  cancelAnimationFrame(frame);
+  started = performance.now();
+  draw(started);
+}
+
+/** Overlay presence says a session is live; the mode says what it is doing. */
+function setOverlayMode(mode: 'idle' | 'listening' | 'working' | 'speaking') {
+  canvas.dataset.mode = mode;
 }
 
 function toggle(origin?: SummonOrigin) {
-  active = !active;
-  cancelAnimationFrame(frame);
-  canvas.classList.remove('settled');
-  canvas.classList.toggle('visible', active);
-  if (active) {
-    originX = clamp((origin?.x ?? width / 2) / width) * width;
-    originY = clamp((origin?.y ?? height / 2) / height) * height;
-    started = performance.now();
-    draw(started);
-  }
+  if (active && !closing) dismiss();
+  else summon(origin);
 }
 
 resize();
 addEventListener('resize', resize);
 if (isTauri()) {
-  await listen<SummonOrigin>('jarvis-toggle', (event) => toggle(event.payload));
-  await invoke('overlay_ready');
+  await listen<SummonOrigin>('overlay-toggle', (event) => toggle(event.payload));
+  // overlay_ready shows the (transparent, click-through) overlay and returns the
+  // monitor origin/scale needed to map Core's screen coordinates onto it.
+  const metrics = await invoke<OverlayMetrics>('overlay_ready');
+  await startCoreLink(metrics, { summon, dismiss, setMode: setOverlayMode });
 } else {
   // Browser-only preview; native operation uses the global shortcut.
   addEventListener('keydown', (event) => {
     if (event.code === 'KeyJ' && event.ctrlKey && event.altKey && !event.repeat) toggle();
   });
+  addEventListener('click', (event) => playPointer(event.clientX, event.clientY));
 }

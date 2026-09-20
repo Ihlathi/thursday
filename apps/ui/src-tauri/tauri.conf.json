@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "jarvis",
+  "productName": "Thursday",
   "version": "0.1.0",
-  "identifier": "com.josef.jarvis",
+  "identifier": "com.josef.thursday",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "jarvis",
+        "title": "Thursday",
         "fullscreen": false,
         "decorations": false,
         "transparent": true,
@@ -24,6 +24,21 @@
         "focus": false,
         "resizable": false,
         "shadow": false
+      },
+      {
+        "label": "settings",
+        "title": "Thursday settings",
+        "url": "settings.html",
+        "width": 560,
+        "height": 760,
+        "minWidth": 460,
+        "minHeight": 520,
+        "resizable": true,
+        "decorations": true,
+        "transparent": false,
+        "visible": false,
+        "skipTaskbar": false,
+        "center": true
       }
     ],
     "security": {

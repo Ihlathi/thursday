@@ -10,6 +10,16 @@ export default defineConfig(() => ({
   //
   // 1. prevent Vite from obscuring rust errors
   clearScreen: false,
+  // Two entry points: the always-present transparent overlay and the tray-only
+  // settings window.
+  build: {
+    rollupOptions: {
+      input: {
+        index: "index.html",
+        settings: "settings.html",
+      },
+    },
+  },
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {
     port: 1420,

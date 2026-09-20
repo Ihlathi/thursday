@@ -2,10 +2,20 @@
 import asyncio
 import hmac
 import json
+import os
 from websockets.asyncio.client import connect
 from .contracts import envelope, validate, validate_def
 
 MAX_MESSAGE=3_000_000
+# Packaged Tauri webviews; native clients send no Origin at all.
+PACKAGED_ORIGINS=(None,'tauri://localhost','http://tauri.localhost')
+
+def allowed_origins():
+    """AGENT_ALLOWED_ORIGIN widens the list for `tauri dev`, whose webview is
+    served from http://localhost:1420. Unset in production, the strict list stands."""
+    extra=os.getenv('AGENT_ALLOWED_ORIGIN','').strip()
+    if not extra: return PACKAGED_ORIGINS
+    return PACKAGED_ORIGINS+tuple(origin.strip() for origin in extra.split(',') if origin.strip())
 
 async def receive(ws):
     raw=await ws.recv()
@@ -13,7 +23,7 @@ async def receive(ws):
     return validate(json.loads(raw))
 
 async def authenticate(ws, role, token):
-    if ws.request.path != '/v1/'+role or ws.request.headers.get('Origin') not in (None,'tauri://localhost','http://tauri.localhost'):
+    if ws.request.path != '/v1/'+role or ws.request.headers.get('Origin') not in allowed_origins():
         await ws.close(1008,'Path or origin rejected')
         return False
     try:
