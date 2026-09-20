@@ -124,17 +124,31 @@ export async function captureUtterance(onLevel?: (level: number) => void): Promi
 }
 
 let speaker: HTMLAudioElement | null = null;
+let speaking: Promise<void> = Promise.resolve();
 
 /** Plays a `speaking` event's audio. */
 export function playSpeech(audio: { mime_type: string; data: string }) {
   stopSpeech();
-  speaker = new Audio(`data:${audio.mime_type};base64,${audio.data}`);
-  void speaker.play().catch(() => undefined);
+  const element = new Audio(`data:${audio.mime_type};base64,${audio.data}`);
+  speaker = element;
+  speaking = new Promise<void>((resolve) => {
+    element.addEventListener('ended', () => resolve(), { once: true });
+    element.addEventListener('error', () => resolve(), { once: true });
+    // Never strand a caller waiting on audio that will not finish.
+    setTimeout(resolve, 30000);
+  });
+  void element.play().catch(() => undefined);
+}
+
+/** Resolves when any in-flight speech has finished, so the mic does not record it. */
+export function speechFinished() {
+  return speaking;
 }
 
 export function stopSpeech() {
   if (speaker) {
     speaker.pause();
     speaker = null;
+    speaking = Promise.resolve();
   }
 }

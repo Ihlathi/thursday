@@ -4,7 +4,7 @@ import { emit, listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { CoreClient, type AgentEvent } from './protocol';
 import { playPointer, setOverlayMetrics, type OverlayMetrics } from './pointer';
-import { captureUtterance, capturing, playSpeech, stopCapture, stopSpeech } from './voice';
+import { captureUtterance, capturing, playSpeech, speechFinished, stopCapture, stopSpeech } from './voice';
 
 interface SocketConfig {
   url: string;
@@ -35,6 +35,41 @@ let socketState = 'connecting';
 let socketDetail: string | undefined;
 let speakReplies = true;
 let controls: OverlayControls | null = null;
+let answering = false;
+let answerHandled = false;
+
+/**
+ * Core asked something. Listen for the answer here, in the overlay, rather than
+ * making the user find a window: a question you cannot answer by talking is not
+ * usable by the person this tool is for. The answer ships as audio; Core
+ * transcribes it with the same ElevenLabs path it uses for requests.
+ */
+async function listenForAnswer(event: AgentEvent) {
+  if (!client || answering || capturing()) return;
+  answering = true;
+  answerHandled = false;
+  try {
+    // Do not record our own voice reading the question out.
+    await speechFinished();
+    controls?.summon();
+    controls?.setMode('listening');
+    void emit('core-state', { state: 'open', detail: 'listening for your answer' });
+    const { audio, reason } = await captureUtterance((level) => controls?.setLevel(level));
+    // A button press in the settings window answered first; do not answer twice.
+    if (answerHandled) return;
+    if (!audio) {
+      void emit('core-ack', { accepted: false, reason: reason ?? 'Nothing captured.' });
+      return;
+    }
+    const sent =
+      event.status === 'confirmation_required'
+        ? client.confirmAudio(event, audio)
+        : client.replyAudio(String(event.metadata?.reply_to ?? ''), audio);
+    if (!sent) void emit('core-ack', { accepted: false, reason: 'Core would not accept the answer.' });
+  } finally {
+    answering = false;
+  }
+}
 
 function announce() {
   void emit('core-state', { state: socketState, detail: socketDetail });
@@ -53,13 +88,14 @@ function pointerFrom(event: AgentEvent) {
  */
 export async function voiceActivate(origin?: { x: number; y: number }) {
   if (!controls) return;
+  if (capturing()) {
+    // Mid-recording (a request or an answer): end the utterance, do not cancel.
+    stopCapture();
+    return;
+  }
   if (client?.busy) {
     stopSpeech();
     client.cancel();
-    return;
-  }
-  if (capturing()) {
-    stopCapture();
     return;
   }
   if (socketState !== 'open') {
@@ -108,7 +144,13 @@ export async function startCoreLink(metrics: OverlayMetrics, overlay: OverlayCon
         }
         if (event.status === 'speaking' && event.audio) playSpeech(event.audio);
         if (event.status === 'confirmation_required') pending = event;
-        if (['completed', 'cancelled', 'error'].includes(event.status)) pending = null;
+        if (event.status === 'confirmation_required' || (event.status === 'awaiting_input' && event.metadata?.reply_to)) {
+          void listenForAnswer(event);
+        }
+        if (['completed', 'cancelled', 'error'].includes(event.status)) {
+          pending = null;
+          answering = false;
+        }
         // Mirror every event to the settings window's activity log.
         void emit('agent-event', { event, taskId });
       },
@@ -134,10 +176,14 @@ export async function startCoreLink(metrics: OverlayMetrics, overlay: OverlayCon
     });
   });
   await listen<boolean>('confirmation-decision', (message) => {
+    answerHandled = true;
+    stopCapture();
     if (pending && client) client.confirm(pending, message.payload);
     pending = null;
   });
   await listen<{ reply_to: string; text: string }>('core-reply', (message) => {
+    answerHandled = true;
+    stopCapture();
     client?.reply(message.payload.reply_to, message.payload.text);
   });
   await listen('core-cancel', () => {

@@ -1,6 +1,8 @@
 """Bounded observe/act loop. All execution crosses independent policy."""
 import asyncio
 import base64
+import os
+import re
 import time
 from .contracts import TOOLS, call, validate_def, uid
 from .policy import Policy, Confirmations
@@ -21,6 +23,28 @@ class Engine:
         f=self.replies.get((task_id,payload['reply_to']))
         if f is None or f.done(): return False
         f.set_result(payload['text']); return True
+    async def resolve_spoken(self,payload):
+        """Turn a spoken answer into the field the protocol expects.
+
+        A user who talks to this tool answers its questions the same way. Core
+        already owns transcription, so the UI ships the recording and Core
+        resolves it into `text` (a reply) or `approved` (a confirmation).
+        """
+        if 'audio' not in payload: return payload
+        text=await asyncio.wait_for(self.voice.transcribe(payload['audio']),self.timeout)
+        resolved={k:v for k,v in payload.items() if k!='audio'}
+        if 'reply_to' in resolved:
+            resolved['text']=(text or '').strip()[:4096] or 'no answer'
+        else:
+            resolved['approved']=self.approves(text)
+        return resolved
+    @staticmethod
+    def approves(text):
+        """Deterministic yes/no. Code decides consent, never the model, and
+        anything unclear counts as no rather than as a silent yes."""
+        words=set(re.findall(r"[a-z]+",(text or '').lower()))
+        if words & {'no','nope','stop','cancel','dont','deny','negative','abort','nevermind','wait'}: return False
+        return bool(words & {'yes','yeah','yep','yup','sure','ok','okay','okey','confirm','approve','approved','go','proceed','continue','affirmative','correct','please'})
     async def adapter(self,task_id,tool):
         result=await asyncio.wait_for(self.platform.execute(task_id,tool),self.timeout)
         validate_def('ToolResult',result)
@@ -147,6 +171,28 @@ class Engine:
                 if status: detail['status']=status
                 await emit('debug',metadata=detail)
         await emit('completed',message=message[:4096])
+    async def settle(self,task_id,name,emit):
+        """Wait for the desktop to catch up, then observe.
+
+        A menu animates, a window draws, a page loads. Observing the instant a
+        click returns plans the next step against a screen that no longer
+        exists, which is what makes a multi-step sequence fall apart halfway.
+        So: poll until the world's revision moves, or until the budget runs out.
+        Launching something gets a longer budget than clicking something.
+        """
+        launch=name in ('open_app','open_url','open_file','open_folder')
+        step=float(os.getenv('AGENT_SETTLE_MS','500'))/1000*(2 if launch else 1)
+        tries=int(os.getenv('AGENT_SETTLE_TRIES','6' if launch else '3'))
+        before=self.world.revision
+        observed=None
+        for attempt in range(max(1,tries)):
+            await asyncio.sleep(step)
+            observed=await self.adapter(task_id,call('get_ui_state'))
+            if not observed['ok'] or self.world.revision!=before: break
+        if observed and observed['ok']:
+            await emit('debug',metadata={'kind':'settled','tool':name,'waits':attempt+1,
+                                         'changed':self.world.revision!=before})
+        return observed or {'ok':False}
     async def say(self,text,emit):
         """Speak a prompt aloud mid-task. Best effort; a voice failure never blocks."""
         if not getattr(self,'speak',False): return
@@ -234,7 +280,7 @@ class Engine:
                     if len(decoded)>2_000_000: raise ValueError('Image exceeds limit')
                 if result['ok'] and TOOLS[name]['risk']!='READ_ONLY' and name not in ('inspect_screen','inspect_region'):
                     self.world.actions.append({'tool':name,'call_id':tool['call_id'],'ok':True})
-                    observed=await self.adapter(task_id,call('get_ui_state'))
+                    observed=await self.settle(task_id,name,emit)
                     if not observed['ok']:
                         return self.failure(tool,'execution_uncertain','Action dispatched but verification failed. Observe before retrying.')
             if result['ok']: escalations.add(name)

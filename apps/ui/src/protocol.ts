@@ -141,11 +141,20 @@ export class CoreClient {
 
   /** Echo the confirmation fields back exactly; never auto-approve. */
   confirm(event: AgentEvent, approved: boolean) {
+    return this.respond(event, { approved });
+  }
+
+  /** A spoken yes/no. Core transcribes it and decides in code, not in the model. */
+  confirmAudio(event: AgentEvent, audio: Record<string, unknown>) {
+    return this.respond(event, { audio });
+  }
+
+  private respond(event: AgentEvent, answer: Record<string, unknown>) {
     const c = event.confirmation;
     if (!c || !this.taskId) return false;
     return this.send(
       'confirmation_response',
-      { confirmation_id: c.confirmation_id, call_id: c.call_id, action_hash: c.action_hash, approved },
+      { confirmation_id: c.confirmation_id, call_id: c.call_id, action_hash: c.action_hash, ...answer },
       this.taskId,
     );
   }
@@ -153,6 +162,11 @@ export class CoreClient {
   reply(replyTo: string, text: string) {
     if (!this.taskId) return false;
     return this.send('user_reply', { reply_to: replyTo, text }, this.taskId);
+  }
+
+  replyAudio(replyTo: string, audio: Record<string, unknown>) {
+    if (!this.taskId) return false;
+    return this.send('user_reply', { reply_to: replyTo, audio }, this.taskId);
   }
 
   cancel() {

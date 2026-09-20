@@ -63,6 +63,12 @@ class CoreServer:
                     if kind=='cancel':
                         self.active.cancel()
                     else:
+                        # A spoken answer arrives as audio; Core transcribes it
+                        # before the normal, unchanged handling runs.
+                        try:
+                            payload=await self.engine.resolve_spoken(payload)
+                        except Exception:
+                            await send_error('voice_unavailable','Could not transcribe the spoken answer.',msg['request_id']); continue
                         accepted=(self.engine.confirmations.respond(task_id,payload) if kind=='confirmation_response' else self.engine.reply(task_id,payload))
                         if not accepted: await send_error('invalid_response','Response is stale or does not match the pending request.',msg['request_id'])
                 else: await send_error('unexpected_message','UI cannot send this message type.',msg['request_id'])

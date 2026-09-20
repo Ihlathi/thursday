@@ -1166,15 +1166,39 @@
         },
         "approved": {
           "type": "boolean"
+        },
+        "audio": {
+          "$ref": "#/$defs/Audio"
         }
       },
       "required": [
         "confirmation_id",
         "call_id",
-        "action_hash",
-        "approved"
+        "action_hash"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "approved"
+          ],
+          "not": {
+            "required": [
+              "audio"
+            ]
+          }
+        },
+        {
+          "required": [
+            "audio"
+          ],
+          "not": {
+            "required": [
+              "approved"
+            ]
+          }
+        }
+      ]
     },
     "UserRequest": {
       "type": "object",
@@ -1280,13 +1304,37 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 4096
+        },
+        "audio": {
+          "$ref": "#/$defs/Audio"
         }
       },
       "required": [
-        "reply_to",
-        "text"
+        "reply_to"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "text"
+          ],
+          "not": {
+            "required": [
+              "audio"
+            ]
+          }
+        },
+        {
+          "required": [
+            "audio"
+          ],
+          "not": {
+            "required": [
+              "text"
+            ]
+          }
+        }
+      ]
     },
     "Hello": {
       "type": "object",
