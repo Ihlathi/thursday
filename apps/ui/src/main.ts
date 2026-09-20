@@ -11,11 +11,11 @@ const dismissDuration = 460;
 
 // Cursor-control visual tuning. These values are intentionally centralized for quick iteration.
 const CURSOR_TUNING = {
-  auraGlowRadius: 126,
-  auraCoreRadius: 44,
-  auraInnerGlowIntensity: 0.18,
-  auraOuterBloomIntensity: 0.075,
-  auraFalloff: 0.82,
+  auraGlowRadius: 144,
+  auraCoreRadius: 48,
+  auraInnerGlowIntensity: 0.22,
+  auraOuterBloomIntensity: 0.1,
+  auraFalloff: 0.72,
   auraBreathingStrength: 0.07,
   auraBreathingMs: 2400,
   trailLifetimeMs: 950,
@@ -737,12 +737,12 @@ function drawCursorAura(now: number, focus: number) {
     centerY,
     radius,
   );
-  outer.addColorStop(0, `rgba(211,241,255,${CURSOR_TUNING.auraOuterBloomIntensity * 1.18 * focusIntensity})`);
-  outer.addColorStop(0.2, `rgba(197,234,253,${CURSOR_TUNING.auraOuterBloomIntensity * 0.78 * focusIntensity})`);
-  outer.addColorStop(0.46, `rgba(181,226,251,${CURSOR_TUNING.auraOuterBloomIntensity * 0.36})`);
-  outer.addColorStop(0.7, `rgba(165,219,249,${CURSOR_TUNING.auraOuterBloomIntensity * 0.1})`);
-  outer.addColorStop(CURSOR_TUNING.auraFalloff, `rgba(157,216,250,${CURSOR_TUNING.auraOuterBloomIntensity * 0.025})`);
-  outer.addColorStop(1, 'rgba(145,205,244,0)');
+  outer.addColorStop(0, `rgba(207,240,255,${CURSOR_TUNING.auraOuterBloomIntensity * 1.22 * focusIntensity})`);
+  outer.addColorStop(0.18, `rgba(184,229,253,${CURSOR_TUNING.auraOuterBloomIntensity * 0.82 * focusIntensity})`);
+  outer.addColorStop(0.4, `rgba(161,216,250,${CURSOR_TUNING.auraOuterBloomIntensity * 0.42})`);
+  outer.addColorStop(CURSOR_TUNING.auraFalloff, `rgba(139,201,246,${CURSOR_TUNING.auraOuterBloomIntensity * 0.085})`);
+  outer.addColorStop(0.88, `rgba(130,194,243,${CURSOR_TUNING.auraOuterBloomIntensity * 0.018})`);
+  outer.addColorStop(1, 'rgba(125,188,240,0)');
   ctx.fillStyle = outer;
   ctx.fillRect(centerX - radius, centerY - radius, radius * 2, radius * 2);
 
@@ -752,20 +752,22 @@ function drawCursorAura(now: number, focus: number) {
     const x = centerX + radius * offsetX;
     const y = centerY + radius * offsetY;
     const lobe = ctx.createRadialGradient(x, y, 0, x, y, lobeRadius);
-    lobe.addColorStop(0, `rgba(196,234,253,${CURSOR_TUNING.auraOuterBloomIntensity * 0.22 * focusIntensity})`);
-    lobe.addColorStop(0.45, `rgba(174,224,251,${CURSOR_TUNING.auraOuterBloomIntensity * 0.07})`);
-    lobe.addColorStop(1, 'rgba(145,205,244,0)');
+    lobe.addColorStop(0, `rgba(183,229,253,${CURSOR_TUNING.auraOuterBloomIntensity * 0.25 * focusIntensity})`);
+    lobe.addColorStop(0.42, `rgba(153,212,249,${CURSOR_TUNING.auraOuterBloomIntensity * 0.085})`);
+    lobe.addColorStop(0.78, `rgba(137,201,246,${CURSOR_TUNING.auraOuterBloomIntensity * 0.018})`);
+    lobe.addColorStop(1, 'rgba(130,194,243,0)');
     ctx.fillStyle = lobe;
     ctx.fillRect(x - lobeRadius, y - lobeRadius, lobeRadius * 2, lobeRadius * 2);
   }
 
   const coreRadius = CURSOR_TUNING.auraCoreRadius * breathe;
   const core = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, coreRadius);
-  core.addColorStop(0, `rgba(245,252,255,${CURSOR_TUNING.auraInnerGlowIntensity * focusIntensity})`);
-  core.addColorStop(0.24, `rgba(220,244,255,${CURSOR_TUNING.auraInnerGlowIntensity * 0.72 * focusIntensity})`);
-  core.addColorStop(0.56, `rgba(190,231,253,${CURSOR_TUNING.auraInnerGlowIntensity * 0.28})`);
-  core.addColorStop(0.82, `rgba(169,220,250,${CURSOR_TUNING.auraInnerGlowIntensity * 0.06})`);
-  core.addColorStop(1, 'rgba(160,216,248,0)');
+  core.addColorStop(0, `rgba(247,253,255,${CURSOR_TUNING.auraInnerGlowIntensity * focusIntensity})`);
+  core.addColorStop(0.22, `rgba(218,243,255,${CURSOR_TUNING.auraInnerGlowIntensity * 0.7 * focusIntensity})`);
+  core.addColorStop(0.52, `rgba(177,224,251,${CURSOR_TUNING.auraInnerGlowIntensity * 0.27})`);
+  core.addColorStop(0.76, `rgba(150,210,248,${CURSOR_TUNING.auraInnerGlowIntensity * 0.07})`);
+  core.addColorStop(0.9, `rgba(139,202,246,${CURSOR_TUNING.auraInnerGlowIntensity * 0.015})`);
+  core.addColorStop(1, 'rgba(132,195,243,0)');
   ctx.fillStyle = core;
   ctx.fillRect(centerX - coreRadius, centerY - coreRadius, coreRadius * 2, coreRadius * 2);
 }
